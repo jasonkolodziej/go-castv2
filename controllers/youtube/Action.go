@@ -4,8 +4,8 @@ import (
 	"net/url"
 	"strconv"
 
-	"github.com/AndreasAbdi/go-castv2/generic"
 	"github.com/imroc/req"
+	"github.com/jasonkolodziej/go-castv2/generic"
 )
 
 type actionRequestParameters struct {
@@ -18,7 +18,7 @@ type actionRequestParameters struct {
 	GSessionID          string
 }
 
-//CreateActionRequest to be sent to active session.
+// CreateActionRequest to be sent to active session.
 func createActionRequest(params actionRequestParameters) generic.RequestComponents {
 	requestCount := params.RequestCount
 	header := req.Header{

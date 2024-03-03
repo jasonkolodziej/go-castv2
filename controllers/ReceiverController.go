@@ -5,19 +5,19 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/AndreasAbdi/go-castv2/api"
-	"github.com/AndreasAbdi/go-castv2/controllers/receiver"
-	"github.com/AndreasAbdi/go-castv2/primitives"
+	"github.com/jasonkolodziej/go-castv2/api"
+	"github.com/jasonkolodziej/go-castv2/controllers/receiver"
+	"github.com/jasonkolodziej/go-castv2/primitives"
 )
 
-//ReceiverController is a chromecast controller for the receiver namespace. This involves
+// ReceiverController is a chromecast controller for the receiver namespace. This involves
 type ReceiverController struct {
 	interval time.Duration
 	channel  *primitives.Channel
 	Incoming chan *receiver.ReceiverStatus
 }
 
-//NewReceiverController is for building a new receiver controller
+// NewReceiverController is for building a new receiver controller
 func NewReceiverController(client *primitives.Client, sourceID, destinationID string) *ReceiverController {
 	controller := &ReceiverController{
 		channel:  client.NewChannel(sourceID, destinationID, receiverControllerNamespace),
@@ -45,7 +45,7 @@ func (c *ReceiverController) onStatus(message *api.CastMessage) {
 
 }
 
-//GetStatus attempts to receive the current status of the controllers chromecast device.
+// GetStatus attempts to receive the current status of the controllers chromecast device.
 func (c *ReceiverController) GetStatus(timeout time.Duration) (*receiver.ReceiverStatus, error) {
 	message, err := c.channel.Request(&primitives.PayloadHeaders{Type: receiverControllerSystemEventGetStatus}, timeout)
 	if err != nil {
@@ -76,8 +76,8 @@ func (c *ReceiverController) LaunchApplication(appID *string, timeout time.Durat
 	}, timeout)
 }
 
-//TODO: so application termination requires sessionID, need to figure out how to rewrite code to work with that.
-//Actually, you know what? we could do it so that there is a wrapper that sends requests to these thingies.
+// TODO: so application termination requires sessionID, need to figure out how to rewrite code to work with that.
+// Actually, you know what? we could do it so that there is a wrapper that sends requests to these thingies.
 func (c *ReceiverController) StopApplication(sessionID *string, timeout time.Duration) {
 	c.channel.Request(&receiver.StopRequest{
 		PayloadHeaders: primitives.PayloadHeaders{Type: receiverControllerSystemEventStop},
@@ -85,7 +85,7 @@ func (c *ReceiverController) StopApplication(sessionID *string, timeout time.Dur
 	}, timeout)
 }
 
-//SetVolume sets the volume on the controller's chromecast.
+// SetVolume sets the volume on the controller's chromecast.
 func (c *ReceiverController) SetVolume(volume *receiver.Volume, timeout time.Duration) (*api.CastMessage, error) {
 	return c.channel.Request(&receiver.ReceiverStatus{
 		PayloadHeaders: primitives.PayloadHeaders{Type: receiverControllerSystemEventSetVolume},
@@ -93,7 +93,7 @@ func (c *ReceiverController) SetVolume(volume *receiver.Volume, timeout time.Dur
 	}, timeout)
 }
 
-//GetVolume gets the volume on the controller's chromecast.
+// GetVolume gets the volume on the controller's chromecast.
 func (c *ReceiverController) GetVolume(timeout time.Duration) (*receiver.Volume, error) {
 	status, err := c.GetStatus(timeout)
 

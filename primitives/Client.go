@@ -6,18 +6,18 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/AndreasAbdi/go-castv2/api"
 	"github.com/gogo/protobuf/proto"
+	"github.com/jasonkolodziej/go-castv2/api"
 )
 
-//Client is a basic connector to the chromecast event stream.
+// Client is a basic connector to the chromecast event stream.
 type Client struct {
 	realConn *tls.Conn
 	conn     *packetStream
 	channels []*Channel
 }
 
-//NewClient is a constructor for a Client object. Host and Port are for the chromecast's network info.
+// NewClient is a constructor for a Client object. Host and Port are for the chromecast's network info.
 func NewClient(host net.IP, port int) (*Client, error) {
 	conn, err := tls.Dial("tcp", fmt.Sprintf("%s:%d", host, port), &tls.Config{
 		InsecureSkipVerify: true,
@@ -63,7 +63,7 @@ func NewClient(host net.IP, port int) (*Client, error) {
 	return client, nil
 }
 
-//Close closes the real socket connection that the client has to the chromecast.
+// Close closes the real socket connection that the client has to the chromecast.
 func (c *Client) Close() {
 	c.realConn.Close()
 }
@@ -87,7 +87,7 @@ func (c *Client) NewChannel(sourceID, destinationID, namespace string) *Channel 
 	return channel
 }
 
-//Send sends a message to the chromecast using the actual socket connection.
+// Send sends a message to the chromecast using the actual socket connection.
 func (c *Client) Send(message *api.CastMessage) error {
 
 	proto.SetDefaults(message)

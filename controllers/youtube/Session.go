@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/AndreasAbdi/go-castv2/generic"
 	"github.com/imroc/req"
+	"github.com/jasonkolodziej/go-castv2/generic"
 )
 
 const requestPrefixFormat = "req%d"
@@ -15,7 +15,7 @@ const actionInsertVideo = "insertVideo"
 const actionAddVideo = "addVideo"
 const actionClearQueue = "clearPlaylist"
 
-//Session represents a connection to the youtube chromecast api.
+// Session represents a connection to the youtube chromecast api.
 type Session struct {
 	initialized    bool
 	screenID       string
@@ -26,7 +26,7 @@ type Session struct {
 	sessionCounter generic.Counter
 }
 
-//NewSession constructs a new session object
+// NewSession constructs a new session object
 func NewSession(screenID string) *Session {
 	session := Session{
 		screenID: screenID,
@@ -34,12 +34,12 @@ func NewSession(screenID string) *Session {
 	return &session
 }
 
-//IsInitialized is used to check if the session has initialized or not
+// IsInitialized is used to check if the session has initialized or not
 func (s *Session) IsInitialized() bool {
 	return s.initialized
 }
 
-//StartSession initializes the session.
+// StartSession initializes the session.
 func (s *Session) StartSession() error {
 	err := s.setLoungeID(s.screenID)
 	if err != nil {
@@ -48,27 +48,27 @@ func (s *Session) StartSession() error {
 	return s.bindAndSetVars(s.screenID, *s.loungeID)
 }
 
-//PlayNext adds a video to be played next in the current playlist
+// PlayNext adds a video to be played next in the current playlist
 func (s *Session) PlayNext(videoID string) {
 	s.sendAction(actionInsertVideo, videoID)
 }
 
-//ClearQueue removes all the videos from the current playlist
+// ClearQueue removes all the videos from the current playlist
 func (s *Session) ClearQueue() {
 	s.sendAction(actionClearQueue, "")
 }
 
-//AddToQueue adds the video to the end of the current playlist
+// AddToQueue adds the video to the end of the current playlist
 func (s *Session) AddToQueue(videoID string) {
 	s.sendAction(actionAddVideo, videoID)
 }
 
-//RemoveFromQueue removes a video from the videoplaylist TODO
+// RemoveFromQueue removes a video from the videoplaylist TODO
 func (s *Session) RemoveFromQueue(videoID string) {
 	s.sendAction(actionRemoveVideo, videoID)
 }
 
-//SendAction sends an action command.
+// SendAction sends an action command.
 func (s *Session) sendAction(actionType string, videoID string) {
 	err := s.ensureSessionActive()
 	if err != nil {
@@ -83,7 +83,7 @@ func (s *Session) sendAction(actionType string, videoID string) {
 	s.handleBadResponse(response)
 }
 
-//InitializeQueue restarts the playlist to something else.
+// InitializeQueue restarts the playlist to something else.
 func (s *Session) InitializeQueue(videoID string, listID string) error {
 	err := s.ensureSessionActive()
 	if err != nil {
@@ -110,7 +110,7 @@ func (s *Session) bindAndSetVars(screenID string, loungeID string) error {
 	return nil
 }
 
-//Bind a screen and link operations to this session object.
+// Bind a screen and link operations to this session object.
 func (s *Session) bind(screenID string, loungeID string) (sessionID string, gSessionID string, err error) {
 	s.resetCounters()
 
@@ -177,7 +177,7 @@ func (s *Session) inSession() bool {
 	return s.loungeID != nil && s.gSessionID != nil
 }
 
-//Response obtained but they were not happy with the request.
+// Response obtained but they were not happy with the request.
 func (s *Session) handleBadResponse(response *req.Resp) {
 	resp := response.Response()
 	if resp == nil {
@@ -188,7 +188,7 @@ func (s *Session) handleBadResponse(response *req.Resp) {
 	}
 }
 
-//FormatSessionParameters formats session parameters to what youtube wants the keys to be.
+// FormatSessionParameters formats session parameters to what youtube wants the keys to be.
 func FormatSessionParameters(params map[string][]string, requestCount int) map[string][]string {
 	formattedMap := make(map[string][]string)
 	requestPrefix := fmt.Sprintf(requestPrefixFormat, requestCount)

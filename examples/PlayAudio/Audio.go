@@ -8,10 +8,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/AndreasAbdi/go-castv2/controllers"
-	"github.com/AndreasAbdi/go-castv2/primitives"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/hashicorp/mdns"
+	"github.com/jasonkolodziej/go-castv2/controllers"
+	"github.com/jasonkolodziej/go-castv2/primitives"
 )
 
 // TODO: Make this play some random audio.

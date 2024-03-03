@@ -3,7 +3,7 @@ package main
 import (
 	"time"
 
-	castv2 "github.com/AndreasAbdi/go-castv2"
+	castv2 "github.com/jasonkolodziej/go-castv2"
 )
 
 // A simple example, showing how to find a Chromecast using mdns, and request its status.

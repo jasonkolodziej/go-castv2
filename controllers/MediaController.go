@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/imdario/mergo"
+	"dario.cat/mergo"
 
-	"github.com/AndreasAbdi/go-castv2/api"
-	"github.com/AndreasAbdi/go-castv2/controllers/media"
-	"github.com/AndreasAbdi/go-castv2/primitives"
+	"github.com/jasonkolodziej/go-castv2/api"
+	"github.com/jasonkolodziej/go-castv2/controllers/media"
+	"github.com/jasonkolodziej/go-castv2/primitives"
 )
 
 /*
@@ -25,7 +25,7 @@ type MediaController struct {
 	MediaSessionID int
 }
 
-//TODO: probably should make this not vars. Or pull them into smaller scope.
+// TODO: probably should make this not vars. Or pull them into smaller scope.
 var getMediaStatus = primitives.PayloadHeaders{Type: "GET_STATUS"}
 var commandMediaPlay = primitives.PayloadHeaders{Type: "PLAY"}
 var commandMediaPause = primitives.PayloadHeaders{Type: "PAUSE"}
@@ -38,7 +38,7 @@ var commandSetSubtitles = primitives.PayloadHeaders{Type: "EDIT_TRACKS_INFO"}
 const responseTypeMediaStatus = "MEDIA_STATUS"
 const skipTimeBuffer = -5
 
-//NewMediaController is the constructors for the media controller
+// NewMediaController is the constructors for the media controller
 func NewMediaController(client *primitives.Client, sourceID string, receiverController *ReceiverController) *MediaController {
 	mediaConnection := NewMediaConnection(client, receiverController, MediaControllerNamespace, sourceID)
 	controller := &MediaController{
@@ -70,7 +70,7 @@ func (c *MediaController) onStatus(message *api.CastMessage) ([]*media.MediaStat
 	return response.Status, nil
 }
 
-//GetStatus attempts to request the chromecast return the status of the current media controller channel
+// GetStatus attempts to request the chromecast return the status of the current media controller channel
 func (c *MediaController) GetStatus(timeout time.Duration) ([]*media.MediaStatus, error) {
 	message, err := c.connection.Request(&getMediaStatus, timeout)
 	if err != nil {
@@ -80,8 +80,8 @@ func (c *MediaController) GetStatus(timeout time.Duration) ([]*media.MediaStatus
 	return c.onStatus(message)
 }
 
-//TODO
-//Load sends a load request to play a generic media event
+// TODO
+// Load sends a load request to play a generic media event
 func (c *MediaController) Load(url string, contentTypeString string, timeout time.Duration) (*api.CastMessage, error) {
 	//TODO should do something about messaging with the contenttype, so it works with different media types. so we can attach more metadata
 	//TODO also should be sending a message of type media data( should probably actually construct the request)
@@ -109,37 +109,37 @@ func (c *MediaController) constructLoadCommand(mediaData *media.MediaData) media
 	}
 }
 
-//Play sends the play command so that the chromecast session is resumed
+// Play sends the play command so that the chromecast session is resumed
 func (c *MediaController) Play(timeout time.Duration) (*api.CastMessage, error) {
 	return c.sendCommand(commandMediaPlay, timeout)
 }
 
-//Pause sends the pause command to the chromecast
+// Pause sends the pause command to the chromecast
 func (c *MediaController) Pause(timeout time.Duration) (*api.CastMessage, error) {
 	return c.sendCommand(commandMediaPause, timeout)
 }
 
-//Stop sends the stop command to the chromecast
+// Stop sends the stop command to the chromecast
 func (c *MediaController) Stop(timeout time.Duration) (*api.CastMessage, error) {
 	return c.sendCommand(commandMediaStop, timeout)
 }
 
-//Next goes to the next video
+// Next goes to the next video
 func (c *MediaController) Next(timeout time.Duration) (*api.CastMessage, error) {
 	return c.sendCommand(commandMediaNext, timeout)
 }
 
-//Previous goes to the previous video
+// Previous goes to the previous video
 func (c *MediaController) Previous(timeout time.Duration) (*api.CastMessage, error) {
 	return c.sendCommand(commandMediaPrevious, timeout)
 }
 
-//Rewind to the beginning.
+// Rewind to the beginning.
 func (c *MediaController) Rewind(timeout time.Duration) (*api.CastMessage, error) {
 	return c.Seek(0, timeout)
 }
 
-//Skip to the end
+// Skip to the end
 func (c *MediaController) Skip(timeout time.Duration) (*api.CastMessage, error) {
 	if c.currentStatus == nil || c.currentStatus.Media.Duration == nil {
 		return nil, errors.New("No media playing, can't skip")
@@ -147,7 +147,7 @@ func (c *MediaController) Skip(timeout time.Duration) (*api.CastMessage, error) 
 	return c.Seek(*c.currentStatus.Media.Duration-5, timeout)
 }
 
-//Seek to some time in the video
+// Seek to some time in the video
 func (c *MediaController) Seek(seconds float64, timeout time.Duration) (*api.CastMessage, error) {
 	seekCommand := media.CreateSeekCommand(seconds)
 	_, err := c.connection.Request(&seekCommand, timeout)
@@ -165,14 +165,14 @@ func (c *MediaController) sendCommand(command primitives.PayloadHeaders, timeout
 	return message, nil
 }
 
-//TODO
-//EnableSubtitles sends the enable subtitles command to the chromecast
+// TODO
+// EnableSubtitles sends the enable subtitles command to the chromecast
 func (c *MediaController) EnableSubtitles(timeout time.Duration) (*api.CastMessage, error) {
 	return nil, nil
 }
 
-//TODO
-//DisableSubtitles sends the disable subtitles command to the chromecast
+// TODO
+// DisableSubtitles sends the disable subtitles command to the chromecast
 func (c *MediaController) DisableSubtitles(timeout time.Duration) (*api.CastMessage, error) {
 	return nil, nil
 }
@@ -209,7 +209,7 @@ func (c *MediaController) sendMessage(payload primitives.PayloadHeaders, timeout
 		MediaSessionID: c.MediaSessionID}, timeout)
 }
 
-//UpdateForNewSession refreshes the media controller for a new media session that's been executed.
+// UpdateForNewSession refreshes the media controller for a new media session that's been executed.
 func (c *MediaController) updateForNewSession(timeout time.Duration) {
 	waitStatusCh := make(chan bool)
 	go func() {

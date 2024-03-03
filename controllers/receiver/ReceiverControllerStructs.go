@@ -1,6 +1,6 @@
 package receiver
 
-import "github.com/AndreasAbdi/go-castv2/primitives"
+import "github.com/jasonkolodziej/go-castv2/primitives"
 
 //TODO: figure out which one of these we need to be public. receiverstatus and application session definitely.
 
@@ -43,7 +43,7 @@ type StopRequest struct {
 	SessionID *string `json:"sessionID,omitempty"`
 }
 
-//GetSessionByNamespace attempts to return the first session with a specified namespace.
+// GetSessionByNamespace attempts to return the first session with a specified namespace.
 func (s *ReceiverStatus) GetSessionByNamespace(namespace string) *ApplicationSession {
 
 	for _, app := range s.Applications {

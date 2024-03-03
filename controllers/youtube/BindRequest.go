@@ -5,8 +5,8 @@ import (
 	"net/url"
 	"regexp"
 
-	"github.com/AndreasAbdi/go-castv2/generic"
 	"github.com/imroc/req"
+	"github.com/jasonkolodziej/go-castv2/generic"
 )
 
 /*
@@ -19,7 +19,7 @@ Hard to parse this into json unmarshallable form.
 const sessionIDRegex = `"c",\s*?"(.*?)",\"`
 const gSessionIDRegex = `"S",\s*?"(.*?)"]`
 
-//Spoof data to be passed for binding the screen and the token
+// Spoof data to be passed for binding the screen and the token
 const defaultDeviceType = "REMOTE_CONTROL"
 const defaultDeviceName = "GOCAST_REMOTE_CONTROL"
 const defaultDeviceID = "GOCAST"
@@ -35,7 +35,7 @@ var bindData = map[string][]string{
 	"app":          []string{defaultAppName},
 }
 
-//CreateBindRequest creates a bind request from relevant data.
+// CreateBindRequest creates a bind request from relevant data.
 func CreateBindRequest(requestID int, loungeToken string) generic.RequestComponents {
 	header := req.Header{
 		loungeIDHeader: loungeToken,
@@ -59,7 +59,7 @@ func CreateBindRequest(requestID int, loungeToken string) generic.RequestCompone
 	return requestComponents
 }
 
-//ParseResponse attempts to grab relevant session info from a youtube screen/loungetoken bind request response.
+// ParseResponse attempts to grab relevant session info from a youtube screen/loungetoken bind request response.
 func ParseResponse(bindResponse *req.Resp) (sessionID string, gSessionID string, err error) {
 	responseString, err := bindResponse.ToString()
 	if err != nil {
@@ -76,7 +76,7 @@ func ParseResponse(bindResponse *req.Resp) (sessionID string, gSessionID string,
 	return sessionID, gSessionID, err
 }
 
-//parseSessionID attempts to grab the sessionid from a bindrequest response string.
+// parseSessionID attempts to grab the sessionid from a bindrequest response string.
 func parseSessionID(bindResponse string) (string, error) {
 	regex, err := regexp.Compile(sessionIDRegex)
 	if err != nil {
@@ -89,7 +89,7 @@ func parseSessionID(bindResponse string) (string, error) {
 	return matches[1], nil
 }
 
-//parseGSessionID attempts to grab the gsessionid from a bindrequest response string.
+// parseGSessionID attempts to grab the gsessionid from a bindrequest response string.
 func parseGSessionID(bindResponse string) (string, error) {
 	regex, err := regexp.Compile(gSessionIDRegex)
 	if err != nil {

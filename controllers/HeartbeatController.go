@@ -3,8 +3,8 @@ package controllers
 import (
 	"time"
 
-	"github.com/AndreasAbdi/go-castv2/api"
-	"github.com/AndreasAbdi/go-castv2/primitives"
+	"github.com/jasonkolodziej/go-castv2/api"
+	"github.com/jasonkolodziej/go-castv2/primitives"
 )
 
 //Sends pings and wait for pongs - https://github.com/thibauts/node-castv2-client/blob/master/lib/controllers/heartbeat.js
@@ -13,7 +13,7 @@ const interval = time.Second * 5
 const timeoutFactor = 3 // timeouts after 3 intervals
 //TODO: TimeoutFactor is essentially ignored. We need to change that so that we perform something on timeout.
 
-//HeartbeatController is used to maintain a connection to a chromecast via sending keepalive messages.
+// HeartbeatController is used to maintain a connection to a chromecast via sending keepalive messages.
 type HeartbeatController struct {
 	ticker      *time.Ticker
 	channel     *primitives.Channel
@@ -23,7 +23,7 @@ type HeartbeatController struct {
 var ping = primitives.PayloadHeaders{Type: SystemEventPing}
 var pong = primitives.PayloadHeaders{Type: SystemEventPong}
 
-//NewHeartbeatController is a constructor for a heartbeat controller.
+// NewHeartbeatController is a constructor for a heartbeat controller.
 func NewHeartbeatController(client *primitives.Client, sourceID, destinationID string) *HeartbeatController {
 	controller := &HeartbeatController{
 		channel: client.NewChannel(sourceID, destinationID, heartbeatControllerNamespace),
@@ -37,12 +37,13 @@ func (c *HeartbeatController) onPing(_ *api.CastMessage) {
 	c.channel.Send(pong)
 }
 
-//TODO
+// TODO
 func (c *HeartbeatController) onTimeout() {
 
 }
 
-/*Start begins the keepalive event stream.
+/*
+Start begins the keepalive event stream.
 Essentially, we send a ping event, then the chromecast will start sending pongs back.
 We would then need to consistently return ping events every specified interval period.
 */
@@ -69,7 +70,7 @@ func (c *HeartbeatController) Start() {
 	}()
 }
 
-//Stop maintaining the keepalive.
+// Stop maintaining the keepalive.
 func (c *HeartbeatController) Stop() {
 
 	if c.ticker != nil {

@@ -6,10 +6,10 @@ import (
 	"log"
 	"time"
 
-	"github.com/AndreasAbdi/go-castv2/controllers/youtube"
+	"github.com/jasonkolodziej/go-castv2/controllers/youtube"
 
-	"github.com/AndreasAbdi/go-castv2/api"
-	"github.com/AndreasAbdi/go-castv2/primitives"
+	"github.com/jasonkolodziej/go-castv2/api"
+	"github.com/jasonkolodziej/go-castv2/primitives"
 )
 
 /*
@@ -28,7 +28,7 @@ const loungeIDHeader = "X-YouTube-LoungeId-Token"
 var messageTypeGetSessionID = "getMdxSessionStatus"
 var responseTypeSessionStatus = "mdxSessionStatus"
 
-//YoutubeController is the controller for the commands unique to the dashcast.
+// YoutubeController is the controller for the commands unique to the dashcast.
 type YoutubeController struct {
 	connection *mediaConnection
 	screenID   *string
@@ -36,7 +36,7 @@ type YoutubeController struct {
 	session    *youtube.Session
 }
 
-//NewYoutubeController is a constructor for a dash cast controller.
+// NewYoutubeController is a constructor for a dash cast controller.
 func NewYoutubeController(client *primitives.Client, sourceID string, receiver *ReceiverController) *YoutubeController {
 	connection := NewMediaConnection(client, receiver, youtubeControllerNamespace, sourceID)
 	controller := YoutubeController{
@@ -52,7 +52,7 @@ type youtubeCommand struct {
 	primitives.PayloadHeaders
 }
 
-//PlayVideo initializes a new queue and plays the video
+// PlayVideo initializes a new queue and plays the video
 func (c *YoutubeController) PlayVideo(videoID string, listID string) error {
 	if c.session.IsInitialized() {
 		err := c.session.InitializeQueue(videoID, listID)
@@ -69,7 +69,7 @@ func (c *YoutubeController) PlayVideo(videoID string, listID string) error {
 	return InitializationError{}
 }
 
-//ClearPlaylist of current videos in the chromecast playlist
+// ClearPlaylist of current videos in the chromecast playlist
 func (c *YoutubeController) ClearPlaylist() {
 	c.runFast(func() error {
 		c.session.ClearQueue()
@@ -77,7 +77,7 @@ func (c *YoutubeController) ClearPlaylist() {
 	})
 }
 
-//PlayNext adds a video to be played next in the current playlist
+// PlayNext adds a video to be played next in the current playlist
 func (c *YoutubeController) PlayNext(videoID string) {
 	c.runFast(func() error {
 		c.session.PlayNext(videoID)
@@ -85,7 +85,7 @@ func (c *YoutubeController) PlayNext(videoID string) {
 	})
 }
 
-//AddToQueue adds the video to the end of the current playlist
+// AddToQueue adds the video to the end of the current playlist
 func (c *YoutubeController) AddToQueue(videoID string) {
 	c.runFast(func() error {
 		c.session.AddToQueue(videoID)
@@ -93,7 +93,7 @@ func (c *YoutubeController) AddToQueue(videoID string) {
 	})
 }
 
-//RemoveFromQueue removes a video from the video playlist
+// RemoveFromQueue removes a video from the video playlist
 func (c *YoutubeController) RemoveFromQueue(videoID string) {
 	c.runFast(func() error {
 		c.session.RemoveFromQueue(videoID)

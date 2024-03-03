@@ -3,7 +3,7 @@ package main
 import (
 	"time"
 
-	"github.com/AndreasAbdi/go-castv2"
+	"github.com/jasonkolodziej/go-castv2"
 )
 
 // A simple example, showing how to create a device and use it.

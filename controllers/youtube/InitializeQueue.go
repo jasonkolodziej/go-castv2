@@ -4,13 +4,13 @@ import (
 	"net/url"
 	"strconv"
 
-	"github.com/AndreasAbdi/go-castv2/generic"
 	"github.com/imroc/req"
+	"github.com/jasonkolodziej/go-castv2/generic"
 )
 
 const actionSetPlaylist = "setPlaylist"
 
-//components for the initializeQueueRequest parameters and body
+// components for the initializeQueueRequest parameters and body
 const listIDKey = "_listId"
 const actionKey = "__sc"
 const currentTimeKey = "_currentTime"

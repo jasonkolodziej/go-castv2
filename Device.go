@@ -2,18 +2,21 @@ package castv2
 
 import (
 	"net"
+	"strings"
 	"time"
 
-	"github.com/AndreasAbdi/go-castv2/configs"
-	"github.com/AndreasAbdi/go-castv2/controllers"
-	"github.com/AndreasAbdi/go-castv2/controllers/media"
-	"github.com/AndreasAbdi/go-castv2/controllers/receiver"
-	"github.com/AndreasAbdi/go-castv2/primitives"
+	"github.com/google/uuid"
+	"github.com/hashicorp/mdns"
+	"github.com/jasonkolodziej/go-castv2/configs"
+	"github.com/jasonkolodziej/go-castv2/controllers"
+	"github.com/jasonkolodziej/go-castv2/controllers/media"
+	"github.com/jasonkolodziej/go-castv2/controllers/receiver"
+	"github.com/jasonkolodziej/go-castv2/primitives"
 )
 
 const defaultTimeout = time.Second * 10
 
-//Device Object to run basic chromecast commands
+// Device Object to run basic chromecast commands
 type Device struct {
 	client               *primitives.Client
 	heartbeatController  *controllers.HeartbeatController
@@ -21,10 +24,43 @@ type Device struct {
 	ReceiverController   *controllers.ReceiverController
 	MediaController      *controllers.MediaController
 	YoutubeController    *controllers.YoutubeController
+	svcRecord            *mdns.ServiceEntry
+	Info                 *DeviceInfo
 }
 
-//NewDevice is constructor for Device struct
-func NewDevice(host net.IP, port int) (Device, error) {
+type DeviceInfo struct {
+	Id    uuid.UUID
+	Cd    uuid.UUID
+	Md    string
+	Fn    string
+	other map[string]string
+	// id=UUID cd=UUID rm= ve=05 md=Google Home ic=/setup/icon.png fn=Kitchen speaker ca=199172 st=0 bs=??? nf=1 rs=
+}
+
+func (i *DeviceInfo) IsGroup() bool {
+	return strings.Contains(i.Md, "Google Cast Group")
+}
+
+func (i *DeviceInfo) IsTv() (bool, string) {
+	return strings.Contains(strings.ToLower(i.Fn), "tv"), i.Md
+}
+
+func FromServiceEntryInfo(info []string) *DeviceInfo {
+	var d DeviceInfo
+	d.other = make(map[string]string)
+	for _, item := range info {
+		kv := strings.Split(item, "=")
+		d.other[kv[0]] = kv[1]
+	}
+	d.Id = uuid.MustParse(d.other["id"])
+	d.Cd = uuid.MustParse(d.other["cd"])
+	d.Md = d.other["md"]
+	d.Fn = d.other["fn"]
+	return &d
+}
+
+// NewDevice is constructor for Device struct
+func NewDevice(host net.IP, port int, record *mdns.ServiceEntry) (Device, error) {
 	var device Device
 
 	client, err := primitives.NewClient(host, port)
@@ -32,6 +68,8 @@ func NewDevice(host net.IP, port int) (Device, error) {
 		return device, err
 	}
 	device.client = client
+	device.svcRecord = record
+	device.Info = FromServiceEntryInfo(record.InfoFields)
 
 	device.heartbeatController = controllers.NewHeartbeatController(client, defaultChromecastSenderID, defaultChromecastReceiverID)
 	device.heartbeatController.Start()
@@ -47,19 +85,19 @@ func NewDevice(host net.IP, port int) (Device, error) {
 	return device, nil
 }
 
-//Play just plays.
+// Play just plays.
 func (device *Device) Play() {
 	device.MediaController.Play(defaultTimeout)
 }
 
-//PlayMedia plays a video via the media controller.
+// PlayMedia plays a video via the media controller.
 func (device *Device) PlayMedia(URL string, MIMEType string) {
 	appID := configs.MediaReceiverAppID
 	device.ReceiverController.LaunchApplication(&appID, defaultTimeout, false)
 	device.MediaController.Load(URL, MIMEType, defaultTimeout)
 }
 
-//QuitApplication that is currently running on the device
+// QuitApplication that is currently running on the device
 func (device *Device) QuitApplication(timeout time.Duration) {
 	status, err := device.ReceiverController.GetStatus(timeout)
 	if err != nil {
@@ -71,14 +109,14 @@ func (device *Device) QuitApplication(timeout time.Duration) {
 	}
 }
 
-//PlayYoutubeVideo launches the youtube app and tries to play the video based on its id.
+// PlayYoutubeVideo launches the youtube app and tries to play the video based on its id.
 func (device *Device) PlayYoutubeVideo(videoID string) {
 	appID := configs.YoutubeAppID
 	device.ReceiverController.LaunchApplication(&appID, defaultTimeout, false)
 	device.YoutubeController.PlayVideo(videoID, "")
 }
 
-//GetMediaStatus of current media controller
+// GetMediaStatus of current media controller
 func (device *Device) GetMediaStatus(timeout time.Duration) []*media.MediaStatus {
 	response, err := device.MediaController.GetStatus(time.Second * 5)
 	if err != nil {
@@ -88,7 +126,7 @@ func (device *Device) GetMediaStatus(timeout time.Duration) []*media.MediaStatus
 	return response
 }
 
-//GetStatus of the device.
+// GetStatus of the device.
 func (device *Device) GetStatus(timeout time.Duration) *receiver.ReceiverStatus {
 	response, err := device.ReceiverController.GetStatus(time.Second * 5)
 	if err != nil {

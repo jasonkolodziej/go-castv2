@@ -1,6 +1,6 @@
 package media
 
-import "github.com/AndreasAbdi/go-castv2/primitives"
+import "github.com/jasonkolodziej/go-castv2/primitives"
 
 type MediaCommand struct {
 	primitives.PayloadHeaders
@@ -22,20 +22,20 @@ type LoadCommand struct {
 
 //Generic enum type for media data
 
-//StreamType is a type for media data defining what type of stream the data is supposed to be.
+// StreamType is a type for media data defining what type of stream the data is supposed to be.
 type streamType string
 
-//NoneStreamType is for when you don't want to define a stream type.
+// NoneStreamType is for when you don't want to define a stream type.
 const NoneStreamType streamType = "NONE"
 
-//BufferedStreamType is for a stream that should be buffered/loaded.
+// BufferedStreamType is for a stream that should be buffered/loaded.
 const BufferedStreamType streamType = "BUFFERED"
 
-//LiveStreamType is for videos that are livestreaming. (Twitch/Youtube livestreams, etc)
+// LiveStreamType is for videos that are livestreaming. (Twitch/Youtube livestreams, etc)
 const LiveStreamType streamType = "LIVE"
 
-//MediaData is data format for message to send to chromecast to play a (vid/image/tvshow/music video/etc) via generic media player.
-//https://developers.google.com/cast/docs/reference/messages#MediaData is the general info.
+// MediaData is data format for message to send to chromecast to play a (vid/image/tvshow/music video/etc) via generic media player.
+// https://developers.google.com/cast/docs/reference/messages#MediaData is the general info.
 type MediaData struct {
 	//ContentID is the identifier for the content to be loaded by the current receiver application in the chromecast.
 	//Usually this is just the URL.
@@ -48,7 +48,7 @@ type MediaData struct {
 	CustomData  map[string]interface{} `json:"customData,omitempty"`
 }
 
-//StandardMediaMetadata is standard part for all metadata objects parts for mediadata objects.
+// StandardMediaMetadata is standard part for all metadata objects parts for mediadata objects.
 type StandardMediaMetadata struct {
 	MetadataType int     `json:"metadataType"`
 	Title        *string `json:"title,omitempty"`
@@ -61,7 +61,7 @@ type genericMediaMetadata struct {
 	ReleaseDate *string  `json:"releaseDate,omitempty"`
 }
 
-//TODO
+// TODO
 type MovieMediaMetadata struct {
 	StandardMediaMetadata
 	Studio      string
@@ -70,7 +70,7 @@ type MovieMediaMetadata struct {
 	ReleaseDate string
 }
 
-//TODO
+// TODO
 type TvShowMediaMetadata struct {
 	StandardMediaMetadata
 	Images          []string
@@ -80,7 +80,7 @@ type TvShowMediaMetadata struct {
 	OriginalAirDate string
 }
 
-//TODO
+// TODO
 type MusicTrackMediaMetadata struct {
 	StandardMediaMetadata
 	Images      []string
@@ -93,7 +93,7 @@ type MusicTrackMediaMetadata struct {
 	ReleaseDate string
 }
 
-//TODO
+// TODO
 type PhotoTrackMediaMetadata struct {
 	StandardMediaMetadata
 	Artist           string
