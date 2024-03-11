@@ -1,5 +1,6 @@
 package tests
 
+//! requires ADMIN privledges to run
 import (
 	"log"
 	"net"

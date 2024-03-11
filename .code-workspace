@@ -151,13 +151,14 @@
 				"name": "Test Current File",
 				"type": "go",
 				"request": "launch",
-				"mode": "auto",
+				"mode": "test",
 				"program": "${workspaceFolder}/${relativeFileDirname}",
 				"args": [
 				"-test.v", 
-				// "-test.run", "${input:pickFunction}" 
+				"-test.run", "^Test_FindDevices$" 
 			],
-				"showLog": true
+				"showLog": true,
+				"asRoot": true
 			}
 		],
 		"inputs": [

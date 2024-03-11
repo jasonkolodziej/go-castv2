@@ -16,6 +16,8 @@ import (
 
 const DefaultHwAddrParam bool = false
 
+type Scanner = scanner
+
 // scanner handles scanning a single IP address.
 type scanner struct {
 	// iface is the interface to send packets on.

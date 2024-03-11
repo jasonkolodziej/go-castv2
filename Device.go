@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net"
 	"strings"
+
+	// "text/scanner"
 	"time"
 
 	"github.com/google/uuid"
@@ -13,6 +15,7 @@ import (
 	"github.com/jasonkolodziej/go-castv2/controllers/media"
 	"github.com/jasonkolodziej/go-castv2/controllers/receiver"
 	"github.com/jasonkolodziej/go-castv2/primitives"
+	"github.com/jasonkolodziej/go-castv2/scanner"
 )
 
 const defaultTimeout = time.Second * 10
@@ -42,7 +45,7 @@ type Device struct {
 type DeviceInfo struct {
 	Id        uuid.UUID
 	Cd        uuid.UUID
-	MAC       *net.HardwareAddr //? MAC Address (used for Airplay 2) "airplay_device_id"
+	hwAddr    *net.HardwareAddr //? MAC Address (used for Airplay 2) "airplay_device_id"
 	Md        string            //? Device type / Manufacturer
 	Fn        string            //? Friendly device name
 	other     map[string]string
@@ -60,7 +63,11 @@ func (i *DeviceInfo) IsTv() (bool, string) {
 }
 
 func (i *DeviceInfo) AirplayDeviceId() (key string, hwid net.HardwareAddr) {
-	return "airplay_device_id", *i.MAC
+	return "airplay_device_id", i.MAC()
+}
+
+func (i *DeviceInfo) MAC() net.HardwareAddr {
+	return *i.hwAddr
 }
 
 func (i *DeviceInfo) AirplayDeviceName() (key string, val string) {
@@ -118,11 +125,11 @@ func discoverLocalInterfaces() []net.Interface {
 // 0.000026000 "shairport.c:2417" run_this_after_exiting_active_state action is  "(null)".
 // 0.000025385 "shairport.c:2419" active_state_timeout is  10.000000 seconds.
 
-func FromServiceEntryInfo(info []string, svcRecord *mdns.ServiceEntry) *DeviceInfo {
+func FromServiceEntryInfo(info []string, svcRecord *mdns.ServiceEntry, mac *net.HardwareAddr) *DeviceInfo {
 	var d DeviceInfo
 	d.port = &svcRecord.Port
 	d.IpAddress = &svcRecord.Addr
-	//d.MAC = net.Interface()
+	d.hwAddr = mac
 	d.other = make(map[string]string)
 	for _, item := range info {
 		kv := strings.Split(item, "=")
@@ -132,21 +139,29 @@ func FromServiceEntryInfo(info []string, svcRecord *mdns.ServiceEntry) *DeviceIn
 	d.Cd = uuid.MustParse(d.other["cd"])
 	d.Md = d.other["md"]
 	d.Fn = d.other["fn"]
+
 	// mac, err := net.ParseMAC(d.other["bs"])
 	return &d
 }
 
 // NewDevice is constructor for Device struct
-func NewDevice(host net.IP, port int, record *mdns.ServiceEntry) (Device, error) {
+// host net.IP, port int,
+func NewDevice(record *mdns.ServiceEntry, s *scanner.Scanner) (Device, error) {
 	var device Device
 
-	client, err := primitives.NewClient(host, port)
+	client, err := primitives.NewClient(record.Addr, record.Port)
 	if err != nil {
 		return device, err
 	}
 	device.client = client
 	device.svcRecord = record
-	device.Info = FromServiceEntryInfo(record.InfoFields, record)
+	mac, err := (*s).GetHwAddr(scanner.DefaultHwAddrParam)
+	if err != nil {
+		return device, err
+		// continue
+	}
+	s.Close()
+	device.Info = FromServiceEntryInfo(record.InfoFields, record, &mac)
 
 	device.heartbeatController = controllers.NewHeartbeatController(client, defaultChromecastSenderID, defaultChromecastReceiverID)
 	device.heartbeatController.Start()

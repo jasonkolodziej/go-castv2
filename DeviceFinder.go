@@ -1,9 +1,13 @@
 package castv2
 
 import (
+	"log"
 	"strings"
 	"time"
 
+	"github.com/jasonkolodziej/go-castv2/scanner"
+
+	"github.com/google/gopacket/routing"
 	"github.com/hashicorp/mdns"
 )
 
@@ -23,11 +27,22 @@ func FindDevices(timeout time.Duration, devices chan<- *Device) {
 
 func createDeviceObjects(entries <-chan *mdns.ServiceEntry, devices chan<- *Device) {
 	defer close(devices)
+	// Create a new router to use
+	router, err := routing.New()
+	if err != nil {
+		log.Fatal("routing error:", err)
+	}
 	for entry := range entries {
 		if !strings.Contains(entry.Name, chromecastServiceName) {
 			return
 		}
-		device, err := NewDevice(entry.Addr, entry.Port, entry)
+		//* Create a scanner for the device using mdns.ServiceEntry
+
+		scanner, err := scanner.NewScanner(entry.AddrV4, router)
+		if err != nil {
+			log.Fatal("scanner error:", err)
+		}
+		device, err := NewDevice(entry, scanner)
 		if err != nil {
 			return
 		}

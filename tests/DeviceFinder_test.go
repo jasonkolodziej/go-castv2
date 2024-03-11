@@ -51,7 +51,7 @@ func Test_FindDevices(t *testing.T) {
 		if i > 1 {
 			t.Errorf("This test expects there to be only 1 group of Devices.. Cleaning up.")
 		}
-		t.Logf("Device: %s, with address %s,", name, device.Info.IPAddress())
+		t.Logf("Device: %s, with address %s, mac: %v", name, device.Info.IPAddress(), device.Info.MAC())
 		t.Log(device.Info)
 	}
 	if i == 0 {
