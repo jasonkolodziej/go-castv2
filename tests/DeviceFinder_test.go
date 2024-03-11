@@ -1,7 +1,6 @@
 package tests
 
 import (
-	"net"
 	"testing"
 	"time"
 
@@ -11,23 +10,24 @@ import (
 // func kitchenSpeaker() cast.DeviceInfo {
 // 	ip, _, _ := net.ParseCIDR("192.168.2.152")
 // 	mac, _ := net.ParseMAC("FA8FCA8766F6")
+// "f4:f5:d8:be:cd:ec"
 // 	return cast.DeviceInfo{IpAddress: &ip, Bs: &mac}
 // }
 
-func Test_MACResolver(t *testing.T) {
-	names, err := net.LookupAddr("192.168.2.152")
-	net.LookupHost(names[0])
-	// net.InterfaceByName()
-	ipaddr, err := net.ResolveIPAddr("ip", "192.168.2.152")
-	// var dialer = net.DefaultResolver.LookupNetIP()
-	if err != nil {
-		t.Error(err)
-	}
-	for _, name := range names {
-		t.Log(name)
-	}
-	t.Log(ipaddr.Network())
-}
+// func Test_MACResolver(t *testing.T) {
+// 	names, err := net.LookupAddr("192.168.2.152")
+// 	net.LookupHost(names[0])
+// 	// net.InterfaceByName()
+// 	ipaddr, err := net.ResolveIPAddr("ip", "192.168.2.152")
+// 	// var dialer = net.DefaultResolver.LookupNetIP()
+// 	if err != nil {
+// 		t.Error(err)
+// 	}
+// 	for _, name := range names {
+// 		t.Log(name)
+// 	}
+// 	t.Log(ipaddr.Network())
+// }
 
 func Test_FindDevices(t *testing.T) {
 	devices := make(chan *cast.Device, 100)
