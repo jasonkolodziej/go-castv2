@@ -47,7 +47,7 @@
 					"$go"
 				],
 				"group": "test",
-				"detail": "cd /home/pi/goplay2; go test ./...",
+				"detail": "cd /home/pi/<project-folder>; go test ./...",
 				"dependsOn":[
 					"go: build",
 				]
@@ -100,7 +100,7 @@
 					"kind": "build",
 					"isDefault": false
 				},
-				"detail": "cd /home/pi/goplay2; go build . -o <some-name>",
+				"detail": "cd /home/pi/<project-folder>; go build . -o <some-name>",
 			},
 		],
 		"inputs": [
