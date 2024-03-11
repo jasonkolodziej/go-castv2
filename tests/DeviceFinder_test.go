@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"net"
 	"testing"
 	"time"
 
@@ -14,20 +15,21 @@ import (
 // 	return cast.DeviceInfo{IpAddress: &ip, Bs: &mac}
 // }
 
-// func Test_MACResolver(t *testing.T) {
-// 	names, err := net.LookupAddr("192.168.2.152")
-// 	net.LookupHost(names[0])
-// 	// net.InterfaceByName()
-// 	ipaddr, err := net.ResolveIPAddr("ip", "192.168.2.152")
-// 	// var dialer = net.DefaultResolver.LookupNetIP()
-// 	if err != nil {
-// 		t.Error(err)
-// 	}
-// 	for _, name := range names {
-// 		t.Log(name)
-// 	}
-// 	t.Log(ipaddr.Network())
-// }
+func Test_MACResolver(t *testing.T) {
+	names, err := net.LookupAddr("192.168.2.152")
+	// net.Interface
+	net.LookupHost(names[0])
+	// net.InterfaceByName()
+	ipaddr, err := net.ResolveIPAddr("ip", "192.168.2.152")
+	// var dialer = net.DefaultResolver.LookupNetIP()
+	if err != nil {
+		t.Error(err)
+	}
+	for _, name := range names {
+		t.Log(name)
+	}
+	t.Log(ipaddr.Network())
+}
 
 func Test_FindDevices(t *testing.T) {
 	devices := make(chan *cast.Device, 100)
@@ -49,7 +51,7 @@ func Test_FindDevices(t *testing.T) {
 		if i > 1 {
 			t.Errorf("This test expects there to be only 1 group of Devices.. Cleaning up.")
 		}
-		t.Logf("Device: %s, with address %s, mac: %s", name, device.Info.IPAddress(), device.Info.MAC.String())
+		t.Logf("Device: %s, with address %s,", name, device.Info.IPAddress())
 		t.Log(device.Info)
 	}
 	if i == 0 {
