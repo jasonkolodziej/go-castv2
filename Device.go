@@ -51,8 +51,14 @@ type DeviceInfo struct {
 	// id=UUID cd=UUID rm= ve=05 md=Google Home ic=/setup/icon.png fn=Kitchen speaker ca=199172 st=0 bs=??? nf=1 rs=
 }
 
-/*
- * IsGroup returns true if d, Device.Info contains the specific criteria of a Chromecast speaker group
+/**
+ * test
+ * other
+ *
+ */
+
+/**
+ * Test
  */
 func (i *DeviceInfo) IsGroup() bool {
 	return strings.Contains(i.Md, "Google Cast Group") && (*i.port == CHROMECAST_GROUP)
