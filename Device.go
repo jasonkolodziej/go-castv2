@@ -1,6 +1,7 @@
 package castv2
 
 import (
+	"fmt"
 	"net"
 	"strings"
 	"time"
@@ -16,6 +17,13 @@ import (
 
 const defaultTimeout = time.Second * 10
 
+type Port = int
+
+const (
+	CHROMECAST       Port = 8009
+	CHROMECAST_GROUP Port = 32187
+)
+
 // Device Object to run basic chromecast commands
 type Device struct {
 	client               *primitives.Client
@@ -24,34 +32,70 @@ type Device struct {
 	ReceiverController   *controllers.ReceiverController
 	MediaController      *controllers.MediaController
 	YoutubeController    *controllers.YoutubeController
-	svcRecord            *mdns.ServiceEntry
-	Info                 *DeviceInfo
+	svcRecord            *mdns.ServiceEntry //? svcRecord is a pointer to the mDNS Service Entry of the Chromecast Device
+	Info                 *DeviceInfo        //? Info extracts information from svcRecord to be Used in DeviceInfo struct
 }
 
+/* struct DeviceInfo
+ *
+ */
 type DeviceInfo struct {
-	Id    uuid.UUID
-	Cd    uuid.UUID
-	Bs    net.HardwareAddr //? MAC Address (used for Airplay 2) "airplay_device_id"
-	Md    string           //? Device type / Manufacturer
-	Fn    string           //? Friendly device name
-	other map[string]string
+	Id        uuid.UUID
+	Cd        uuid.UUID
+	MAC       *net.HardwareAddr //? MAC Address (used for Airplay 2) "airplay_device_id"
+	Md        string            //? Device type / Manufacturer
+	Fn        string            //? Friendly device name
+	other     map[string]string
+	port      *Port //? Port number opened for the chromecast service
+	IpAddress *net.IP
 	// id=UUID cd=UUID rm= ve=05 md=Google Home ic=/setup/icon.png fn=Kitchen speaker ca=199172 st=0 bs=??? nf=1 rs=
 }
 
 func (i *DeviceInfo) IsGroup() bool {
-	return strings.Contains(i.Md, "Google Cast Group")
+	return strings.Contains(i.Md, "Google Cast Group") && (*i.port == CHROMECAST_GROUP)
 }
 
 func (i *DeviceInfo) IsTv() (bool, string) {
 	return strings.Contains(strings.ToLower(i.Fn), "tv"), i.Md
 }
 
-func (i *DeviceInfo) AirplayDeviceId() (string, net.HardwareAddr) {
-	return "airplay_device_id", i.Bs
+func (i *DeviceInfo) AirplayDeviceId() (key string, hwid net.HardwareAddr) {
+	return "airplay_device_id", *i.MAC
 }
 
-func (i *DeviceInfo) AirplayDeviceName() (string, string) {
+func (i *DeviceInfo) AirplayDeviceName() (key string, val string) {
 	return "name", i.Fn
+}
+
+func (i *DeviceInfo) IPAddress() string {
+	return i.IpAddress.String()
+}
+
+/*
+discoverLocalInterfaces
+
+	disovers interfaces used by the device executing this function
+*/
+func discoverLocalInterfaces() []net.Interface {
+	var ret []net.Interface
+	netFaces, err := net.Interfaces()
+	if err != nil {
+		panic(err)
+	}
+	for _, face := range netFaces {
+		addrs, err := face.Addrs()
+		if err != nil {
+			panic(err)
+		}
+		for _, addr := range addrs {
+			ipNet, ok := addr.(*net.IPNet)
+			if ok && !ipNet.IP.IsLoopback() && ipNet.IP.To4() != nil {
+				fmt.Println(ipNet.IP)
+				ret = append(ret, face)
+			}
+		}
+	}
+	return ret
 }
 
 //    0.000032000 "shairport.c:2401" daemon status is 0.
@@ -74,8 +118,11 @@ func (i *DeviceInfo) AirplayDeviceName() (string, string) {
 // 0.000026000 "shairport.c:2417" run_this_after_exiting_active_state action is  "(null)".
 // 0.000025385 "shairport.c:2419" active_state_timeout is  10.000000 seconds.
 
-func FromServiceEntryInfo(info []string) *DeviceInfo {
+func FromServiceEntryInfo(info []string, svcRecord *mdns.ServiceEntry) *DeviceInfo {
 	var d DeviceInfo
+	d.port = &svcRecord.Port
+	d.IpAddress = &svcRecord.Addr
+	//d.MAC = net.Interface()
 	d.other = make(map[string]string)
 	for _, item := range info {
 		kv := strings.Split(item, "=")
@@ -85,7 +132,7 @@ func FromServiceEntryInfo(info []string) *DeviceInfo {
 	d.Cd = uuid.MustParse(d.other["cd"])
 	d.Md = d.other["md"]
 	d.Fn = d.other["fn"]
-	d.Bs = net.HardwareAddr(d.other["bs"])
+	// mac, err := net.ParseMAC(d.other["bs"])
 	return &d
 }
 
@@ -99,7 +146,7 @@ func NewDevice(host net.IP, port int, record *mdns.ServiceEntry) (Device, error)
 	}
 	device.client = client
 	device.svcRecord = record
-	device.Info = FromServiceEntryInfo(record.InfoFields)
+	device.Info = FromServiceEntryInfo(record.InfoFields, record)
 
 	device.heartbeatController = controllers.NewHeartbeatController(client, defaultChromecastSenderID, defaultChromecastReceiverID)
 	device.heartbeatController.Start()
