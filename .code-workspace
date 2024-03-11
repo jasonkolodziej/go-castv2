@@ -10,7 +10,8 @@
 		"go.testFlags": [
 		    "-test.v"
 		],
-		"better-comments.highlightPlainText": true,
+		"better-comments.highlightPlainText": false,
+		"better-comments.multilineComments": true,
 		"better-comments.tags": [
 	
 			{
@@ -49,16 +50,15 @@
 				"bold": false,
 				"italic": false
 			},
-			{
-				"tag": "/*",
-				"color": "#98C379",
-				"multiline": true,
-				"strikethrough": false,
-				"underline": false,
-				"backgroundColor": "transparent",
-				"bold": false,
-				"italic": false
-			},
+			// {
+			// 	"tag": "/*",
+			// 	"color": "#98C379",
+			// 	"strikethrough": false,
+			// 	"underline": false,
+			// 	"backgroundColor": "transparent",
+			// 	"bold": false,
+			// 	"italic": false
+			// },
 			{
 				"tag": "*",
 				"color": "#98C379",
@@ -68,23 +68,25 @@
 				"bold": false,
 				"italic": false
 			},
-			{
-				"tag": "*/",
-				"multiline": true,
-				"color": "#98C379",
-				"strikethrough": false,
-				"underline": false,
-				"backgroundColor": "transparent",
-				"bold": false,
-				"italic": false
-			}
+			// {
+			// 	"tag": "*/",
+			// 	"color": "#98C379",
+			// 	"strikethrough": false,
+			// 	"underline": false,
+			// 	"backgroundColor": "transparent",
+			// 	"bold": false,
+			// 	"italic": false
+			// }
 		]
 	},
 	"extensions": {
 		"recommendations": [
 			"bierner.markdown-mermaid",
 			"eamodio.gitlens",
-			"golang.go"
+			"golang.go",
+			"aaron-bond.better-comments",
+			"kevinkyang.auto-comment-blocks",
+			
 		]
 	},
 	"tasks": {
