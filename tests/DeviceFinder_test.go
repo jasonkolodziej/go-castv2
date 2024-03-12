@@ -59,3 +59,17 @@ func Test_FindDevices(t *testing.T) {
 	}
 	t.Logf("Number of group(s) found: %v", i)
 }
+
+func Test_FindSpecific(t *testing.T) {
+	ip := net.ParseIP("192.168.2.152")
+	var findKitchen = cast.DeviceInfo{
+		Fn:        "Kitchen speaker",
+		IpAddress: &ip,
+	}
+	found, err := cast.FindDevice(&findKitchen)
+
+	if err != nil {
+		t.Fatal()
+	}
+	t.Log(found.Info.IpAddress, found.Info.Fn, found.Info.MAC())
+}

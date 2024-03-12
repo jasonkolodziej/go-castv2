@@ -15,6 +15,18 @@ import (
 // Chromecasts are chatty so we wouldn't need to worry too much about lots of devices in one network. It's not really feasible.
 const deviceBufferSearchSize = 100
 
+func FindDevice(find *DeviceInfo) (*Device, error) {
+	// var err error
+	devices := make(chan *Device, 100)
+	FindDevices(time.Second*5, devices)
+	for device := range devices {
+		if device.Resembles(*find) {
+			return device, nil
+		}
+	}
+	return nil, nil
+}
+
 // FindDevices searches the LAN for chromecast devices via mDNS and sends them to a channel.
 func FindDevices(timeout time.Duration, devices chan<- *Device) {
 

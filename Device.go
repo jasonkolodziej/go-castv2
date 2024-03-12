@@ -3,6 +3,7 @@ package castv2
 import (
 	"fmt"
 	"net"
+	"reflect"
 	"strings"
 
 	// "text/scanner"
@@ -52,6 +53,21 @@ type DeviceInfo struct {
 	port      *Port //? Port number opened for the chromecast service
 	IpAddress *net.IP
 	// id=UUID cd=UUID rm= ve=05 md=Google Home ic=/setup/icon.png fn=Kitchen speaker ca=199172 st=0 bs=??? nf=1 rs=
+}
+
+func (x *Device) Equal(y Device) bool {
+	return reflect.DeepEqual(*x.Info, y.Info)
+}
+
+func (x *Device) Resembles(y DeviceInfo) bool {
+	return x.Info.Md == y.Md ||
+		(x.Info.port == y.port || (x.Info.IpAddress) == (y.IpAddress)) ||
+		x.Info.hwAddr == y.hwAddr ||
+		x.Info.Fn == y.Fn
+}
+
+func Equal[DeviceInfo comparable](x, y DeviceInfo) bool {
+	return reflect.DeepEqual(x, y)
 }
 
 func (i *DeviceInfo) IsGroup() bool {
