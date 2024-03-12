@@ -1,3 +1,7 @@
+//go:build cgo
+
+// # cgo LDFLAGS: -lpcap
+
 package scanner
 
 // ! requires `sudo apt-get install libpcap-dev` linux TODO: add golang build constraints
