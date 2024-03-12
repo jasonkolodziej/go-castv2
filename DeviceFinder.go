@@ -15,6 +15,7 @@ import (
 // Chromecasts are chatty so we wouldn't need to worry too much about lots of devices in one network. It's not really feasible.
 const deviceBufferSearchSize = 100
 
+// FindDevice finds a specific Device based on DeviceInfo given criteria
 func FindDevice(find *DeviceInfo) (*Device, error) {
 	// var err error
 	devices := make(chan *Device, 100)
