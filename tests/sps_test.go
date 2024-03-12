@@ -26,6 +26,7 @@ func Test_FileParser(t *testing.T) {
 	t.Logf("current value: %s, type: %s", air, air.Type().String())
 	// libconfig.GetHex()
 	gen.Set("airplay_device_id", libconfig.MustParse(`=0xF4L;`).Get(""))
+	// gen.Set("airplay_device_id", libconfig.MustParse(`=0xF4L;`).Get(""))
 	// val = gen.Get("airplay_device_id")
 	t.Logf("set to: %s", gen)
 }
