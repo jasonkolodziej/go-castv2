@@ -1,6 +1,7 @@
 //go:build cgo
 
-// # cgo LDFLAGS: -lpcap
+// #cgo pkg-config: libpcap
+// #cgo LDFLAGS: -lpcap
 
 package scanner
 

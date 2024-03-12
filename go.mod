@@ -6,6 +6,7 @@ require (
 	dario.cat/mergo v1.0.0
 	github.com/davecgh/go-spew v1.1.1
 	github.com/fatih/structs v1.1.0
+	github.com/gitteamer/libconfig v1.0.0
 	github.com/gogo/protobuf v1.3.2
 	github.com/google/go-cmp v0.6.0
 	github.com/google/gopacket v1.1.19
