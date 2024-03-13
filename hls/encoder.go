@@ -8,6 +8,7 @@ import (
 
 	logg "github.com/sirupsen/logrus"
 
+	aud "github.com/go-audio/audio"
 	"github.com/mewkiz/flac"
 	"github.com/mewkiz/flac/meta"
 )
@@ -16,11 +17,14 @@ import (
 var _ io.ReadWriteCloser = FLACStream{}       // Verify that T implements I.
 var _ io.ReadWriteCloser = (*FLACStream)(nil) // Verify that *T implements I.
 
+type PCMBuffer = aud.PCMBuffer
+
 // defaultStreamInfo [ref]:https://github.com/ains/aircast/blob/236f5e860e4e962c880096faad59a275ffae678e/src/aircast.py#L22
 var defaultStreamInfo = &meta.StreamInfo{
 	SampleRate:    44100,
 	NChannels:     2,
 	BitsPerSample: 16,
+	// ! compression_level should result to 8
 }
 
 var Broadcaster = flac.New //* used to pass stdOutPipe or stdOut from exec.Cmd
@@ -50,7 +54,7 @@ func (f *FLACStream) readPackets() {
 	// var l uint32 // * length
 	go func() {
 		for {
-			s, err := flac.New(f)
+			s, err := Broadcaster(f)
 			if err != nil {
 				logg.Errorf("Failed to read packet length: %s", err)
 				return
