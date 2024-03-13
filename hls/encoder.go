@@ -81,7 +81,7 @@ func CalculateSubFrames(streamer *meta.StreamInfo, nChannels int) []*frame.Subfr
 	return subframes
 }
 
-func UpdateSamplesField(subframes *[]*frame.Subframe, n int, nChannel int) {
+func UpdateSamplesField(subframes *[]*frame.Subframe, bufferData *[]int, n int, nChannel int) {
 	for _, subframe := range *subframes {
 		subHdr := frame.SubHeader{
 			Pred:   frame.PredVerbatim, // * Specifies the prediction method used to encode the audio sample of the subframe.
@@ -91,6 +91,23 @@ func UpdateSamplesField(subframes *[]*frame.Subframe, n int, nChannel int) {
 		subframe.SubHeader = subHdr
 		subframe.NSamples = n / nChannel
 		subframe.Samples = subframe.Samples[:subframe.NSamples]
+	}
+	for i, sample := range *bufferData {
+		subframe := (*subframes)[i%nChannel]
+		subframe.Samples[i/nChannel] = int32(sample) // ! This line panics at frameNum == 82687
+	}
+	for _, subframe := range *subframes { //*  Check if the subframe may be encoded as constant; when all samples are the same
+		sample := subframe.Samples[0]
+		constant := true
+		for _, s := range subframe.Samples[1:] {
+			if sample != s {
+				constant = false
+			}
+		}
+		if constant {
+			// t.Log("subframe was encoded with a constant method")
+			subframe.SubHeader.Pred = frame.PredConstant
+		}
 	}
 }
 

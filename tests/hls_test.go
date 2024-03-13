@@ -170,28 +170,28 @@ func Test_Encoder(t *testing.T) {
 		// 	subframe.NSamples = n / nchannels
 		// 	subframe.Samples = subframe.Samples[:subframe.NSamples]
 		// }
-		hls.UpdateSamplesField(&subframes, n, nchannels)
+		hls.UpdateSamplesField(&subframes, &buf.Data, n, nchannels)
 
 		// t.Log("Converting buf.Data (# of Samples / Block)")
-		for i, sample := range buf.Data {
-			subframe := subframes[i%nchannels]
-			subframe.Samples[i/nchannels] = int32(sample) // ! This line panics at frameNum == 82687
-		}
+		// for i, sample := range buf.Data {
+		// 	subframe := subframes[i%nchannels]
+		// 	subframe.Samples[i/nchannels] = int32(sample) // ! This line panics at frameNum == 82687
+		// }
 
 		// t.Log("Checking if all Samples in SubFrames are the same")
-		for _, subframe := range subframes { //*  Check if the subframe may be encoded as constant; when all samples are the same
-			sample := subframe.Samples[0]
-			constant := true
-			for _, s := range subframe.Samples[1:] {
-				if sample != s {
-					constant = false
-				}
-			}
-			if constant {
-				// t.Log("subframe was encoded with a constant method")
-				subframe.SubHeader.Pred = frame.PredConstant
-			}
-		}
+		// for _, subframe := range subframes { //*  Check if the subframe may be encoded as constant; when all samples are the same
+		// 	sample := subframe.Samples[0]
+		// 	constant := true
+		// 	for _, s := range subframe.Samples[1:] {
+		// 		if sample != s {
+		// 			constant = false
+		// 		}
+		// 	}
+		// 	if constant {
+		// 		// t.Log("subframe was encoded with a constant method")
+		// 		subframe.SubHeader.Pred = frame.PredConstant
+		// 	}
+		// }
 		// Encode FLAC frame.
 		channels, err := getChannels(nchannels)
 		if err != nil {
