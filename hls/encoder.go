@@ -66,7 +66,7 @@ func (f *FLACStream) readPackets() {
 					logg.Errorf("Failed to read packet: %s", err)
 					return
 				}
-				f.packets <- &*s // TODO: see if this fails
+				f.packets <- s // TODO: see if this fails
 				// hb, err := s.ParseNext() // * returns the next flac.Frame with Stream.Header and Stream.Blocks
 			}
 
