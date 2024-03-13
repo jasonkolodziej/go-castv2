@@ -11,7 +11,7 @@ See "[Issue with libpcap]".
 [Issue with libpcap]:(https://github.com/google/gopacket/issues/280#issuecomment-410145559)
 [Original Example]:https://github.com/google/gopacket/blob/master/examples/synscan/main.go
 
-! requires `sudo apt-get install libpcap-dev` linux TODO: add golang build constraints
+! requires `apt-get install libpcap-dev` linux TODO: add golang build constraints
 */
 package scanner
 
