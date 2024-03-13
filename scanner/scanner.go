@@ -9,10 +9,10 @@
 See "[Issue with libpcap]".
 
 [Issue with libpcap]:(https://github.com/google/gopacket/issues/280#issuecomment-410145559)
+
+! requires `sudo apt-get install libpcap-dev` linux TODO: add golang build constraints
 */
 package scanner
-
-// ! requires `sudo apt-get install libpcap-dev` linux TODO: add golang build constraints
 
 import (
 	"errors"
