@@ -4,18 +4,19 @@ import (
 	"bytes"
 	"encoding/binary"
 	"io"
-	"reflect"
 
 	logg "github.com/sirupsen/logrus"
 
+	"github.com/go-audio/audio"
 	aud "github.com/go-audio/audio"
 	"github.com/mewkiz/flac"
+	"github.com/mewkiz/flac/frame"
 	"github.com/mewkiz/flac/meta"
 )
 
 // ref: https://stackoverflow.com/questions/33089523/how-to-mark-golang-struct-as-implementing-interface
-var _ io.ReadWriteCloser = FLACStream{}       // Verify that T implements I.
-var _ io.ReadWriteCloser = (*FLACStream)(nil) // Verify that *T implements I.
+// var _ io.ReadWriteCloser = FLACStream{}       // Verify that T implements I.
+// var _ io.ReadWriteCloser = (*FLACStream)(nil) // Verify that *T implements I.
 
 type PCMBuffer = aud.PCMBuffer
 
@@ -34,74 +35,63 @@ var BroadcasterEncoder = flac.NewEncoder // * example: flac.NewEncoder(fakeWrite
 
 // var RawAudio = new(chunk.Reader) //* used to pass stdOutPipe or stdOut from exec.Cmd
 
-type FLACStream struct {
-	io.ReadWriteCloser
-	packets chan *flac.Stream
-	config  *meta.StreamInfo
-}
-
-// * Note: Please modify config after successful creation
-func NewFLACStream(stream io.ReadWriteCloser, config *meta.StreamInfo) *FLACStream {
-	w := FLACStream{stream, make(chan *flac.Stream), defaultStreamInfo} // * wrapper with Default config
-	if config != nil {
-		w = FLACStream{stream, make(chan *flac.Stream), config} // * wrapper
-	}
-	w.readPackets()
-	return &w
-}
-
-func (f *FLACStream) readPackets() {
-	// var l uint32 // * length
-	go func() {
-		for {
-			s, err := Broadcaster(f)
-			if err != nil {
-				logg.Errorf("Failed to read packet length: %s", err)
-				return
-			}
-			s.Info = f.config
-			if reflect.DeepEqual(f.config, s.Info) { // * check to see if the set config made it
-				_, err := s.Next() // * returns the next flac.Frame with Stream.Header ONLY
-				if err != nil {
-					logg.Errorf("Failed to read packet: %s", err)
-					return
-				}
-				f.packets <- s // TODO: see if this fails
-				// hb, err := s.ParseNext() // * returns the next flac.Frame with Stream.Header and Stream.Blocks
-			}
-
-		}
-	}()
-}
-
-func (f *FLACStream) read() *flac.Stream {
-	return <-f.packets
-}
-
-func (f *FLACStream) write(data *[]byte) (int, error) {
-	e, err := BroadcasterEncoder(f, f.config) // * encoder or error
-	if err != nil {
-		logg.Errorf("Failed to write packet length %d. error:%s", len(*data), err)
-		return 0, err
-	}
-	fr, err := e.Next()
-	if err != nil {
-		logg.Errorf("Failed to invoke next encoder frame length %d. error:%s", len(*data), err)
-		return 0, err
-	}
-	err = e.WriteFrame(fr) // ? write to the header frame?
-	if err != nil {
-		logg.Errorf("Failed to write frame length %v. error:%s", fr, err)
-		return 0, err
-	}
-	return int(fr.Num), nil
-	// f.Write()
-}
-
 // packetStream is a wrapper for a socket connection for easier uses.
 type packetStream struct {
 	stream  io.ReadWriteCloser
 	packets chan *[]byte
+}
+
+// AudioBuffer returns an audio.IntBuffer with nChannels, sampleRate, and bps from a Decoder or
+// if streamer is not nil, associated values will be used instead
+func AudioBuffer(streamer *meta.StreamInfo, nChannels, sampleRate, bps int) *audio.IntBuffer {
+	if streamer != nil {
+		nChannels = int(streamer.NChannels)
+		sampleRate = int(streamer.SampleRate)
+		bps = int(streamer.BitsPerSample)
+	}
+	const nsamplesPerChannel = 16 // * Number of samples per channel and block
+	nsamplesPerBlock := nChannels * nsamplesPerChannel
+	return &audio.IntBuffer{ // * Initialize an audio.Buffer of type audio.IntBuffer
+		Format: &audio.Format{
+			NumChannels: nChannels,
+			SampleRate:  sampleRate,
+		},
+		Data:           make([]int, nsamplesPerBlock),
+		SourceBitDepth: bps,
+	}
+}
+
+func CalculateSubFrames(streamer *meta.StreamInfo, nChannels int) []*frame.Subframe {
+	const nsamplesPerChannel = 16 // * Number of samples per channel and block
+	if streamer != nil {
+		nChannels = int(streamer.NChannels)
+	}
+	subframes := make([]*frame.Subframe, nChannels) // * Calculate the subframes for the given number of channels
+	for i := range subframes {
+		subframe := &frame.Subframe{
+			// SubHeader: frame.SubHeader{
+			// 	Pred:   frame.PredVerbatim, // * Specifies the prediction method used to encode the audio sample of the subframe.
+			// 	Order:  0,                  // * Prediction order used by fixed and FIR linear prediction decoding.
+			// 	Wasted: 0,                  //* Wasted bits-per-sample.
+			// },
+			Samples: make([]int32, nsamplesPerChannel),
+		}
+		subframes[i] = subframe
+	} // * End of initializing the SubFrame buffer
+	return subframes
+}
+
+func UpdateSamplesField(subframes *[]*frame.Subframe, n int, nChannel int) {
+	for _, subframe := range *subframes {
+		subHdr := frame.SubHeader{
+			Pred:   frame.PredVerbatim, // * Specifies the prediction method used to encode the audio sample of the subframe.
+			Order:  0,                  // * Prediction order used by fixed and FIR linear prediction decoding.
+			Wasted: 0,                  //* Wasted bits-per-sample.
+		}
+		subframe.SubHeader = subHdr
+		subframe.NSamples = n / nChannel
+		subframe.Samples = subframe.Samples[:subframe.NSamples]
+	}
 }
 
 // newPacketStream is the constructor.
@@ -115,16 +105,13 @@ func newPacketStream(stream io.ReadWriteCloser) *packetStream {
 // Continually processes events from the stream.
 func (w *packetStream) readPackets() {
 	var length uint32
-
 	go func() {
 		for {
-
 			err := binary.Read(w.stream, binary.BigEndian, &length)
 			if err != nil {
 				logg.Errorf("Failed to read packet length: %s", err)
 				return
 			}
-
 			if length > 0 {
 				packet := make([]byte, length)
 
@@ -151,13 +138,10 @@ func (w *packetStream) read() *[]byte {
 
 // Sends events to the stream to be read.
 func (w *packetStream) write(data *[]byte) (int, error) {
-
 	err := binary.Write(w.stream, binary.BigEndian, uint32(len(*data)))
-
 	if err != nil {
 		logg.Errorf("Failed to write packet length %d. error:%s", len(*data), err)
 		return 0, err
 	}
-
 	return w.stream.Write(*data)
 }

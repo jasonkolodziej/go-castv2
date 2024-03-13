@@ -7,6 +7,7 @@ import (
 
 	"github.com/go-audio/audio"
 	"github.com/go-audio/wav"
+	"github.com/jasonkolodziej/go-castv2/hls"
 	"github.com/mewkiz/flac"
 	"github.com/mewkiz/flac/frame"
 	"github.com/mewkiz/flac/meta"
@@ -58,11 +59,11 @@ func Test_Encoder(t *testing.T) {
 
 	dec := wav.NewDecoder(f) // * Create the Decoder
 	if !dec.IsValidFile() {
-		t.Errorf("invalid WAV file %q", f.Name())
+		t.Errorf("invalid WAV file %s", f.Name())
 	}
 	sampleRate, nchannels, bps := int(dec.SampleRate), int(dec.NumChans), int(dec.BitDepth)
 	t.Logf("Initialized Decoder SampleRate: %v, NChannels: %v, BitsPerSample: %v, File: %s", sampleRate, nchannels, bps, f.Name())
-	t.Logf("Determined Number of Channels from Decoder, %q", nchannels)
+	t.Logf("Determined Number of Channels from Decoder, %v", nchannels)
 
 	var eInfo = &meta.StreamInfo{ // * Start the initialization of the Encoder
 		// 	SampleRate:    44100,
@@ -92,7 +93,7 @@ func Test_Encoder(t *testing.T) {
 		// MD5 checksum of the unencoded audio data.
 		//MD5sum // set by encoder.
 	}
-	t.Logf("Created flac.StreamInfo, %q", eInfo)
+	t.Logf("Created flac.StreamInfo, %v", eInfo)
 
 	// outPath := sourcePath[:len(sourcePath)-len(filepath.Ext(sourcePath))] + ".aif"
 	pwd, _ := os.Getwd()
@@ -115,25 +116,13 @@ func Test_Encoder(t *testing.T) {
 	}
 	t.Logf("Forwarding Decoder Frames to PCM")
 
-	const nsamplesPerChannel = 16 // * Number of samples per channel and block
-	nsamplesPerBlock := nchannels * nsamplesPerChannel
-	buf := &audio.IntBuffer{ // * Initialize an audio.Buffer of type audio.IntBuffer
-		Format: &audio.Format{
-			NumChannels: nchannels,
-			SampleRate:  sampleRate,
-		},
-		Data:           make([]int, nsamplesPerBlock),
-		SourceBitDepth: bps,
-	}
+	buf := hls.AudioBuffer(nil, nchannels, sampleRate, bps)
+	bb := audio.Buffer(buf)
+	t.Logf("Number of frames: %v", bb.NumFrames())
 	t.Logf("Initialized an audio.IntBuffer for audio.Buffer(): %v", *buf)
 
-	subframes := make([]*frame.Subframe, nchannels) // * Calculate the subframes for the given number of channels
-	for i := range subframes {
-		subframe := &frame.Subframe{
-			Samples: make([]int32, nsamplesPerChannel),
-		}
-		subframes[i] = subframe
-	} // * End of initializing the SubFrame buffer
+	const nsamplesPerChannel = 16 // * Number of samples per channel and block
+	subframes := hls.CalculateSubFrames(nil, nchannels)
 	t.Logf("Initialized []frame.Subframe size: %v; with .[]Samples size: %v", nchannels, nsamplesPerChannel)
 
 	// var n int
@@ -158,6 +147,7 @@ func Test_Encoder(t *testing.T) {
 		t.Log("frame number:", frameNum)
 		nBlockSize := nsamplesPerChannel
 		n, err := dec.PCMBuffer(buf)
+
 		if err != nil {
 			t.Error(err)
 			break
@@ -170,16 +160,17 @@ func Test_Encoder(t *testing.T) {
 			nBlockSize = n
 		}
 		// t.Log("Initializing SubFrame.SubHeader")
-		for _, subframe := range subframes {
-			subHdr := frame.SubHeader{
-				Pred:   frame.PredVerbatim, // * Specifies the prediction method used to encode the audio sample of the subframe.
-				Order:  0,                  // * Prediction order used by fixed and FIR linear prediction decoding.
-				Wasted: 0,                  //* Wasted bits-per-sample.
-			}
-			subframe.SubHeader = subHdr
-			subframe.NSamples = n / nchannels
-			subframe.Samples = subframe.Samples[:subframe.NSamples]
-		}
+		// for _, subframe := range subframes {
+		// 	subHdr := frame.SubHeader{
+		// 		Pred:   frame.PredVerbatim, // * Specifies the prediction method used to encode the audio sample of the subframe.
+		// 		Order:  0,                  // * Prediction order used by fixed and FIR linear prediction decoding.
+		// 		Wasted: 0,                  //* Wasted bits-per-sample.
+		// 	}
+		// 	subframe.SubHeader = subHdr
+		// 	subframe.NSamples = n / nchannels
+		// 	subframe.Samples = subframe.Samples[:subframe.NSamples]
+		// }
+		hls.UpdateSamplesField(&subframes, n, nchannels)
 
 		// t.Log("Converting buf.Data (# of Samples / Block)")
 		for i, sample := range buf.Data {
@@ -227,15 +218,17 @@ func Test_Encoder(t *testing.T) {
 			// frame number with the block size (in samples).
 			//Num // set by encoder.
 		}
+		// t.Log(hdr)
 		f := &frame.Frame{
 			Header:    hdr,
 			Subframes: subframes,
 		}
+
+		//nf, err := frame.New(dec.PCMChunk)
 		// t.Logf("Initialized flac frame.Frame with Header: %v", hdr)
 		if err := enc.WriteFrame(f); err != nil {
 			t.Fatal(err)
 		}
 	}
-
 	t.Logf("flac.Encoder wrote all frames :)")
 }
