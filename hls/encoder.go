@@ -4,8 +4,9 @@ import (
 	"bytes"
 	"encoding/binary"
 	"io"
-	"log"
 	"reflect"
+
+	logg "github.com/sirupsen/logrus"
 
 	"github.com/mewkiz/flac"
 	"github.com/mewkiz/flac/meta"
@@ -51,13 +52,13 @@ func (f *FLACStream) readPackets() {
 		for {
 			s, err := flac.New(f)
 			if err != nil {
-				log.Printf("Failed to read packet length: %s", err)
+				logg.Errorf("Failed to read packet length: %s", err)
 				return
 			}
 			if reflect.DeepEqual(f.config, s.Info) { // * check to see if the set config made it
 				_, err := s.Next() // * returns the next flac.Frame with Stream.Header ONLY
 				if err != nil {
-					log.Printf("Failed to read packet: %s", err)
+					logg.Errorf("Failed to read packet: %s", err)
 					return
 				}
 				f.packets <- &*s // TODO: see if this fails
@@ -75,17 +76,17 @@ func (f *FLACStream) read() *flac.Stream {
 func (f *FLACStream) write(data *[]byte) (int, error) {
 	e, err := BroadcasterEncoder(f, f.config) // * encoder or error
 	if err != nil {
-		log.Printf("Failed to write packet length %d. error:%s", len(*data), err)
+		logg.Errorf("Failed to write packet length %d. error:%s", len(*data), err)
 		return 0, err
 	}
 	fr, err := e.Next()
 	if err != nil {
-		log.Printf("Failed to invoke next encoder frame length %d. error:%s", len(*data), err)
+		logg.Errorf("Failed to invoke next encoder frame length %d. error:%s", len(*data), err)
 		return 0, err
 	}
 	err = e.WriteFrame(fr) // ? write to the header frame?
 	if err != nil {
-		log.Printf("Failed to write frame length %v. error:%s", fr, err)
+		logg.Errorf("Failed to write frame length %v. error:%s", fr, err)
 		return 0, err
 	}
 	return int(fr.Num), nil
@@ -115,7 +116,7 @@ func (w *packetStream) readPackets() {
 
 			err := binary.Read(w.stream, binary.BigEndian, &length)
 			if err != nil {
-				log.Printf("Failed to read packet length: %s", err)
+				logg.Errorf("Failed to read packet length: %s", err)
 				return
 			}
 
@@ -124,12 +125,12 @@ func (w *packetStream) readPackets() {
 
 				i, err := w.stream.Read(packet)
 				if err != nil {
-					log.Printf("Failed to read packet: %s", err)
+					logg.Errorf("Failed to read packet: %s", err)
 					return
 				}
 
 				if i != int(length) {
-					log.Printf("Invalid packet size. Wanted: %d Read: %d", length, i)
+					logg.Errorf("Invalid packet size. Wanted: %d Read: %d", length, i)
 					return
 				}
 				w.packets <- &packet
@@ -149,7 +150,7 @@ func (w *packetStream) write(data *[]byte) (int, error) {
 	err := binary.Write(w.stream, binary.BigEndian, uint32(len(*data)))
 
 	if err != nil {
-		log.Printf("Failed to write packet length %d. error:%s", len(*data), err)
+		logg.Errorf("Failed to write packet length %d. error:%s", len(*data), err)
 		return 0, err
 	}
 
