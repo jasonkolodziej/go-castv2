@@ -9,46 +9,8 @@ import (
 	"github.com/go-audio/wav"
 	"github.com/jasonkolodziej/go-castv2/hls"
 	"github.com/mewkiz/flac"
-	"github.com/mewkiz/flac/frame"
 	"github.com/mewkiz/flac/meta"
-	"github.com/pkg/errors"
 )
-
-// getChannels returns the channels assignment matching the given number of
-// channels.
-func getChannels(nchannels int) (frame.Channels, error) {
-	switch nchannels {
-	case 1:
-		// 1 channel: mono.
-		return frame.ChannelsMono, nil
-	case 2:
-		// 2 channels: left, right.
-		return frame.ChannelsLR, nil
-		//return frame.ChannelsLeftSide, nil  // 2 channels: left, side; using inter-channel decorrelation.
-		//return frame.ChannelsSideRight, nil // 2 channels: side, right; using inter-channel decorrelation.
-		//return frame.ChannelsMidSide, nil   // 2 channels: mid, side; using inter-channel decorrelation.
-	case 3:
-		// 3 channels: left, right, center.
-		return frame.ChannelsLRC, nil
-	case 4:
-		// 4 channels: left, right, left surround, right surround.
-		return frame.ChannelsLRLsRs, nil
-	case 5:
-		// 5 channels: left, right, center, left surround, right surround.
-		return frame.ChannelsLRCLsRs, nil
-	case 6:
-		// 6 channels: left, right, center, LFE, left surround, right surround.
-		return frame.ChannelsLRCLfeLsRs, nil
-	case 7:
-		// 7 channels: left, right, center, LFE, center surround, side left, side right.
-		return frame.ChannelsLRCLfeCsSlSr, nil
-	case 8:
-		// 8 channels: left, right, center, LFE, left surround, right surround, side left, side right.
-		return frame.ChannelsLRCLfeLsRsSlSr, nil
-	default:
-		return 0, errors.Errorf("support for %d number of channels not yet implemented", nchannels)
-	}
-}
 
 func Test_Encoder(t *testing.T) {
 	f, _ := loadTestSound(t, "PinkPanther60.wav")
@@ -192,37 +154,42 @@ func Test_Encoder(t *testing.T) {
 		// 		subframe.SubHeader.Pred = frame.PredConstant
 		// 	}
 		// }
+
 		// Encode FLAC frame.
-		channels, err := getChannels(nchannels)
-		if err != nil {
-			t.Fatal(err)
-		}
-		var hdr = frame.Header{
-			// Specifies if the block size is fixed or variable.
-			HasFixedBlockSize: false,
-			// Block size in inter-channel samples, i.e. the number of audio samples
-			// in each subframe.
-			BlockSize: uint16(nBlockSize),
-			// Sample rate in Hz; a 0 value implies unknown, get sample rate from
-			// StreamInfo.
-			SampleRate: uint32(sampleRate),
-			// Specifies the number of channels (subframes) that exist in the frame,
-			// their order and possible inter-channel decorrelation.
-			Channels: channels,
-			// Sample size in bits-per-sample; a 0 value implies unknown, get sample
-			// size from StreamInfo.
-			BitsPerSample: uint8(bps),
-			// Specifies the frame number if the block size is fixed, and the first
-			// sample number in the frame otherwise. When using fixed block size, the
-			// first sample number in the frame can be derived by multiplying the
-			// frame number with the block size (in samples).
-			//Num // set by encoder.
-		}
+		// channels, err := getChannels(nchannels)
+		// if err != nil {
+		// 	t.Fatal(err)
+		// }
+		// t.Log("channels: ", channels)
+		// var hdr = frame.Header{
+		// 	// Specifies if the block size is fixed or variable.
+		// 	HasFixedBlockSize: false,
+		// 	// Block size in inter-channel samples, i.e. the number of audio samples
+		// 	// in each subframe.
+		// 	BlockSize: uint16(nBlockSize),
+		// 	// Sample rate in Hz; a 0 value implies unknown, get sample rate from
+		// 	// StreamInfo.
+		// 	SampleRate: uint32(sampleRate),
+		// 	// Specifies the number of channels (subframes) that exist in the frame,
+		// 	// their order and possible inter-channel decorrelation.
+		// 	Channels: channels,
+		// 	// Sample size in bits-per-sample; a 0 value implies unknown, get sample
+		// 	// size from StreamInfo.
+		// 	BitsPerSample: uint8(bps),
+		// 	// Specifies the frame number if the block size is fixed, and the first
+		// 	// sample number in the frame otherwise. When using fixed block size, the
+		// 	// first sample number in the frame can be derived by multiplying the
+		// 	// frame number with the block size (in samples).
+		// 	//Num // set by encoder.
+		// }
 		// t.Log(hdr)
-		f := &frame.Frame{
-			Header:    hdr,
-			Subframes: subframes,
-		}
+		// f := &frame.Frame{
+		// 	Header:    hdr,
+		// 	Subframes: subframes,
+		// }
+		f := hls.NewFrame(
+			hls.NewFrameHeaderBasedOnNBytes(nil, nBlockSize, nBlockSize, sampleRate, nchannels, bps),
+			subframes)
 
 		//nf, err := frame.New(dec.PCMChunk)
 		// t.Logf("Initialized flac frame.Frame with Header: %v", hdr)

@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"io"
 
+	"github.com/pkg/errors"
 	logg "github.com/sirupsen/logrus"
 
 	"github.com/go-audio/audio"
@@ -108,6 +109,81 @@ func UpdateSamplesField(subframes *[]*frame.Subframe, bufferData *[]int, n int, 
 			// t.Log("subframe was encoded with a constant method")
 			subframe.SubHeader.Pred = frame.PredConstant
 		}
+	}
+}
+
+func NewFrame(head *frame.Header, frames []*frame.Subframe) *frame.Frame {
+	return &frame.Frame{Header: *head, Subframes: frames}
+}
+
+func NewFrameHeaderBasedOnNBytes(streamer *meta.StreamInfo, nBytesRead, dBlockSize, sampleRate, nChannel, bps int) *frame.Header {
+	var nBlockSize int = dBlockSize
+	if streamer != nil {
+		dBlockSize = int(streamer.BlockSizeMin)
+		sampleRate = int(streamer.SampleRate)
+		nChannel = int(streamer.NChannels)
+		bps = int(streamer.BitsPerSample)
+	}
+	if nBytesRead >= 0 { // * nBytesRead needs to be used instead of default
+		nBlockSize = nBytesRead
+	}
+	ch, _ := getChannels(nChannel)
+	return &frame.Header{
+		// Specifies if the block size is fixed or variable.
+		HasFixedBlockSize: false,
+		// Block size in inter-channel samples, i.e. the number of audio samples
+		// in each subframe.
+		BlockSize: uint16(nBlockSize),
+		// Sample rate in Hz; a 0 value implies unknown, get sample rate from
+		// StreamInfo.
+		SampleRate: uint32(sampleRate),
+		// Specifies the number of channels (subframes) that exist in the frame,
+		// their order and possible inter-channel decorrelation.
+		Channels: ch,
+		// Sample size in bits-per-sample; a 0 value implies unknown, get sample
+		// size from StreamInfo.
+		BitsPerSample: uint8(bps),
+		// Specifies the frame number if the block size is fixed, and the first
+		// sample number in the frame otherwise. When using fixed block size, the
+		// first sample number in the frame can be derived by multiplying the
+		// frame number with the block size (in samples).
+		//Num // set by encoder.
+	}
+}
+
+// getChannels returns the channels assignment matching the given number of
+// channels.
+func getChannels(nchannels int) (frame.Channels, error) {
+	switch nchannels {
+	case 1:
+		// 1 channel: mono.
+		return frame.ChannelsMono, nil
+	case 2:
+		// 2 channels: left, right.
+		return frame.ChannelsLR, nil
+		//return frame.ChannelsLeftSide, nil  // 2 channels: left, side; using inter-channel decorrelation.
+		//return frame.ChannelsSideRight, nil // 2 channels: side, right; using inter-channel decorrelation.
+		//return frame.ChannelsMidSide, nil   // 2 channels: mid, side; using inter-channel decorrelation.
+	case 3:
+		// 3 channels: left, right, center.
+		return frame.ChannelsLRC, nil
+	case 4:
+		// 4 channels: left, right, left surround, right surround.
+		return frame.ChannelsLRLsRs, nil
+	case 5:
+		// 5 channels: left, right, center, left surround, right surround.
+		return frame.ChannelsLRCLsRs, nil
+	case 6:
+		// 6 channels: left, right, center, LFE, left surround, right surround.
+		return frame.ChannelsLRCLfeLsRs, nil
+	case 7:
+		// 7 channels: left, right, center, LFE, center surround, side left, side right.
+		return frame.ChannelsLRCLfeCsSlSr, nil
+	case 8:
+		// 8 channels: left, right, center, LFE, left surround, right surround, side left, side right.
+		return frame.ChannelsLRCLfeLsRsSlSr, nil
+	default:
+		return 0, errors.Errorf("support for %d number of channels not yet implemented", nchannels)
 	}
 }
 
