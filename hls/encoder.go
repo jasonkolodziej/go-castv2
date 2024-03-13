@@ -78,8 +78,18 @@ func (f *FLACStream) write(data *[]byte) (int, error) {
 		log.Printf("Failed to write packet length %d. error:%s", len(*data), err)
 		return 0, err
 	}
+	fr, err := e.Next()
+	if err != nil {
+		log.Printf("Failed to invoke next encoder frame length %d. error:%s", len(*data), err)
+		return 0, err
+	}
+	err = e.WriteFrame(fr) // ? write to the header frame?
+	if err != nil {
+		log.Printf("Failed to write frame length %v. error:%s", fr, err)
+		return 0, err
+	}
+	return int(fr.Num), nil
 	// f.Write()
-	e.
 }
 
 // packetStream is a wrapper for a socket connection for easier uses.
