@@ -1,19 +1,30 @@
 package tests
 
 import (
+	"encoding/json"
 	"net"
+	"os"
 	"testing"
 	"time"
 
 	cast "github.com/jasonkolodziej/go-castv2"
 )
 
-// func kitchenSpeaker() cast.DeviceInfo {
-// 	ip, _, _ := net.ParseCIDR("192.168.2.152")
-// 	mac, _ := net.ParseMAC("FA8FCA8766F6")
-// "f4:f5:d8:be:cd:ec"
-// 	return cast.DeviceInfo{IpAddress: &ip, Bs: &mac}
-// }
+const remoteSoundFile = "https://samplelib.com/lib/preview/mp3/sample-12s.mp3"
+
+func printJson(t *testing.T, val any) {
+	b, err := json.Marshal(val)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("%s", b)
+}
+
+func loadTestSound(t *testing.T) {
+	pwd, _ := os.Getwd()
+	t.Log(pwd)
+
+}
 
 func Test_MACResolver(t *testing.T) {
 	names, err := net.LookupAddr("192.168.2.152")
@@ -72,4 +83,28 @@ func Test_FindSpecific(t *testing.T) {
 		t.Fatal()
 	}
 	t.Log(found.Info.IpAddress, found.Info.Fn, found.Info.MAC())
+
+	//? Get status
+	status := found.GetStatus(time.Second * 5)
+	printJson(t, status)
+
+	//? Get media Status
+	mStatus := found.GetMediaStatus(time.Second * 5)
+	if len(mStatus) == 0 {
+		t.Log("Skipping GetMediaStatus")
+	} else {
+		for _, stat := range mStatus {
+			printJson(t, stat)
+		}
+	}
+	//? load and play remote file
+	// found.QuitApplication()
+	// found.ReceiverController.SetVolume()
+	found.PlayMedia(remoteSoundFile, "audio/mp3")
+	t.Log("done")
+	found.QuitApplication(time.Second * 5)
+	// if err != nil {
+	// 	t.Error(err)
+	// }
+	// t.Log(msg)
 }

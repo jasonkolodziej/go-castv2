@@ -177,6 +177,7 @@ func (c *MediaController) DisableSubtitles(timeout time.Duration) (*api.CastMess
 	return nil, nil
 }
 
+// constructMediaData returns *media.MediaData packet uses contentTypeString, MIME type, and a url string
 func (c *MediaController) constructMediaData(url string, contentTypeString string) (*media.MediaData, error) {
 	contentType, err := media.NewContentType(contentTypeString)
 	if err != nil {
