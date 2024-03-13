@@ -3,6 +3,13 @@
 // #cgo pkg-config: libpcap
 // #cgo LDFLAGS: -lpcap
 
+/*
+	Package scanner utlizes pcap to detect the MAC address of remote devices on a local network
+
+See "[Issue with libpcap]".
+
+[Issue with libpcap]:https://github.com/google/gopacket/issues/280#issuecomment-410145559
+*/
 package scanner
 
 // ! requires `sudo apt-get install libpcap-dev` linux TODO: add golang build constraints
