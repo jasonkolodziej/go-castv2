@@ -20,6 +20,8 @@ require (
 require (
 	github.com/go-audio/audio v1.0.0 // indirect
 	github.com/go-audio/chunk v0.0.0-20180402231512-6dd119599a6a // indirect
+	github.com/go-audio/riff v1.0.0 // indirect
+	github.com/go-audio/wav v1.1.0 // indirect
 	github.com/icza/bitio v1.1.0 // indirect
 	github.com/mewkiz/flac v1.0.10 // indirect
 	github.com/mewkiz/pkg v0.0.0-20230226050401-4010bf0fec14 // indirect

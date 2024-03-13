@@ -1,30 +1,12 @@
 package tests
 
 import (
-	"encoding/json"
 	"net"
-	"os"
 	"testing"
 	"time"
 
 	cast "github.com/jasonkolodziej/go-castv2"
 )
-
-const remoteSoundFile = "https://samplelib.com/lib/preview/mp3/sample-12s.mp3"
-
-func printJson(t *testing.T, val any) {
-	b, err := json.Marshal(val)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Logf("%s", b)
-}
-
-func loadTestSound(t *testing.T) {
-	pwd, _ := os.Getwd()
-	t.Log(pwd)
-
-}
 
 func Test_MACResolver(t *testing.T) {
 	names, err := net.LookupAddr("192.168.2.152")
