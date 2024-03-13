@@ -28,7 +28,6 @@ func loadTestSound(t *testing.T, filename string) (f *os.File, size int64) {
 	}
 	fInfo, _ := f.Stat()
 	size = fInfo.Size()
-	defer f.Close()
 	return
 }
 

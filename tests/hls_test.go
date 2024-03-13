@@ -1,8 +1,8 @@
 package tests
 
 import (
-	"bytes"
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/go-audio/audio"
@@ -50,56 +50,126 @@ func getChannels(nchannels int) (frame.Channels, error) {
 }
 
 func Test_Encoder(t *testing.T) {
-	f, fSize := loadTestSound(t, "PinkPanther60.wav")
+	f, _ := loadTestSound(t, "PinkPanther60.wav")
 	if f == nil {
 		t.Fatal("Error file was not loaded correctly")
 	}
+	defer f.Close()
+
 	dec := wav.NewDecoder(f) // * Create the Decoder
 	if !dec.IsValidFile() {
 		t.Errorf("invalid WAV file %q", f.Name())
 	}
+	sampleRate, nchannels, bps := int(dec.SampleRate), int(dec.NumChans), int(dec.BitDepth)
+	t.Logf("Initialized Decoder SampleRate: %v, NChannels: %v, BitsPerSample: %v, File: %s", sampleRate, nchannels, bps, f.Name())
+	t.Logf("Determined Number of Channels from Decoder, %q", nchannels)
 
-	nchannels := int(dec.NumChans)
 	var eInfo = &meta.StreamInfo{ // * Start the initialization of the Encoder
-		SampleRate:    44100,
-		NChannels:     2,
-		BitsPerSample: 16, // dec.NumChannels
-		// ! compression_level should result to 8
+		// 	SampleRate:    44100,
+		// 	NChannels:     2,
+		// 	BitsPerSample: 16, // dec.NumChannels
+		// 	// ! compression_level should result to 8
+		// Minimum block size (in samples) used in the stream; between 16 and
+		// 65535 samples.
+		BlockSizeMin: 16, // adjusted by encoder.
+		// Maximum block size (in samples) used in the stream; between 16 and
+		// 65535 samples.
+		BlockSizeMax: 65535, // adjusted by encoder.
+		// Minimum frame size in bytes; a 0 value implies unknown.
+		//FrameSizeMin // set by encoder.
+		// Maximum frame size in bytes; a 0 value implies unknown.
+		//FrameSizeMax // set by encoder.
+		// Sample rate in Hz; between 1 and 655350 Hz.
+		SampleRate: uint32(sampleRate),
+		// Number of channels; between 1 and 8 channels.
+		NChannels: uint8(nchannels),
+		// Sample size in bits-per-sample; between 4 and 32 bits.
+		BitsPerSample: uint8(bps),
+		// Total number of inter-channel samples in the stream. One second of
+		// 44.1 KHz audio will have 44100 samples regardless of the number of
+		// channels. A 0 value implies unknown.
+		//NSamples // set by encoder.
+		// MD5 checksum of the unencoded audio data.
+		//MD5sum // set by encoder.
 	}
-	enc, err := flac.NewEncoder(bytes.NewBuffer(make([]byte, fSize)), eInfo) // * temperarily passes a new buffer created
+	t.Logf("Created flac.StreamInfo, %q", eInfo)
+
+	// outPath := sourcePath[:len(sourcePath)-len(filepath.Ext(sourcePath))] + ".aif"
+	pwd, _ := os.Getwd()
+	of, err := os.Create(pwd + "/data/PinkPanther60.flac")
+	if err != nil {
+		fmt.Println("Failed to create", pwd+"/PinkPanther60.flac")
+		t.Fatal(err)
+	}
+	defer of.Close()
+
+	enc, err := flac.NewEncoder(of, eInfo) // * temperarily passes a new buffer created
 	if err != nil {
 		t.Error(err)
 	}
-	defer enc.Close()                      // * End of initializing the Encoder
+	defer enc.Close() // * End of initializing the Encoder
+	t.Logf("Initialized flac.Encoder")
+
 	if err := dec.FwdToPCM(); err != nil { // * Forward audio frames into the PCM
 		t.Error(err)
 	}
+	t.Logf("Forwarding Decoder Frames to PCM")
+
 	const nsamplesPerChannel = 16 // * Number of samples per channel and block
-	nsamplesPerBlock := eInfo.NChannels * nsamplesPerChannel
-	buf := &audio.IntBuffer{
+	nsamplesPerBlock := nchannels * nsamplesPerChannel
+	buf := &audio.IntBuffer{ // * Initialize an audio.Buffer of type audio.IntBuffer
 		Format: &audio.Format{
-			NumChannels: int(eInfo.NChannels),
-			SampleRate:  int(eInfo.SampleRate),
+			NumChannels: nchannels,
+			SampleRate:  sampleRate,
 		},
 		Data:           make([]int, nsamplesPerBlock),
-		SourceBitDepth: int(eInfo.BitsPerSample),
+		SourceBitDepth: bps,
 	}
-	subframes := make([]*frame.Subframe, eInfo.NChannels) // * Calculate the subframes for the given number of channels
+	t.Logf("Initialized an audio.IntBuffer for audio.Buffer(): %v", *buf)
+
+	subframes := make([]*frame.Subframe, nchannels) // * Calculate the subframes for the given number of channels
 	for i := range subframes {
 		subframe := &frame.Subframe{
 			Samples: make([]int32, nsamplesPerChannel),
 		}
 		subframes[i] = subframe
 	} // * End of initializing the SubFrame buffer
+	t.Logf("Initialized []frame.Subframe size: %v; with .[]Samples size: %v", nchannels, nsamplesPerChannel)
+
+	// var n int
+	// for err == nil {
+	// 	n, err = dec.PCMBuffer(buf)
+	// 	if err != nil {
+	// 		break
+	// 	}
+	// 	if n == 0 {
+	// 		break
+	// 	}
+	// 	if n != len(buf.Data) {
+	// 		buf.Data = buf.Data[:n]
+	// 	}
+	// 	if err := enc.WriteFrame(buf); err != nil {
+	// 		panic(err)
+	// 	}
+	// }
+
+	t.Logf("Performing decoding until EOF...")
 	for frameNum := 0; !dec.EOF(); frameNum++ { // * Decode WAV samples by obtaining the PCM Data Packets
-		fmt.Println("frame number:", frameNum)
+		t.Log("frame number:", frameNum)
+		nBlockSize := nsamplesPerChannel
 		n, err := dec.PCMBuffer(buf)
 		if err != nil {
 			t.Error(err)
+			break
 		}
 		if n == 0 {
 			break
 		}
+		if n != len(buf.Data) { // * Decoder has read the some blocks before EOF
+			buf.Data = buf.Data[:n]
+			nBlockSize = n
+		}
+		// t.Log("Initializing SubFrame.SubHeader")
 		for _, subframe := range subframes {
 			subHdr := frame.SubHeader{
 				Pred:   frame.PredVerbatim, // * Specifies the prediction method used to encode the audio sample of the subframe.
@@ -110,10 +180,14 @@ func Test_Encoder(t *testing.T) {
 			subframe.NSamples = n / nchannels
 			subframe.Samples = subframe.Samples[:subframe.NSamples]
 		}
+
+		// t.Log("Converting buf.Data (# of Samples / Block)")
 		for i, sample := range buf.Data {
 			subframe := subframes[i%nchannels]
-			subframe.Samples[i/nchannels] = int32(sample)
+			subframe.Samples[i/nchannels] = int32(sample) // ! This line panics at frameNum == 82687
 		}
+
+		// t.Log("Checking if all Samples in SubFrames are the same")
 		for _, subframe := range subframes { //*  Check if the subframe may be encoded as constant; when all samples are the same
 			sample := subframe.Samples[0]
 			constant := true
@@ -123,29 +197,30 @@ func Test_Encoder(t *testing.T) {
 				}
 			}
 			if constant {
-				fmt.Println("constant method")
+				// t.Log("subframe was encoded with a constant method")
 				subframe.SubHeader.Pred = frame.PredConstant
 			}
 		}
-		channels, err := getChannels(nchannels) //* Encode FLAC frame.
+		// Encode FLAC frame.
+		channels, err := getChannels(nchannels)
 		if err != nil {
-			t.Error(err)
+			t.Fatal(err)
 		}
-		hdr := frame.Header{
+		var hdr = frame.Header{
 			// Specifies if the block size is fixed or variable.
 			HasFixedBlockSize: false,
 			// Block size in inter-channel samples, i.e. the number of audio samples
 			// in each subframe.
-			BlockSize: uint16(nsamplesPerChannel),
+			BlockSize: uint16(nBlockSize),
 			// Sample rate in Hz; a 0 value implies unknown, get sample rate from
 			// StreamInfo.
-			SampleRate: uint32(eInfo.SampleRate),
+			SampleRate: uint32(sampleRate),
 			// Specifies the number of channels (subframes) that exist in the frame,
 			// their order and possible inter-channel decorrelation.
 			Channels: channels,
 			// Sample size in bits-per-sample; a 0 value implies unknown, get sample
 			// size from StreamInfo.
-			BitsPerSample: uint8(eInfo.BitsPerSample),
+			BitsPerSample: uint8(bps),
 			// Specifies the frame number if the block size is fixed, and the first
 			// sample number in the frame otherwise. When using fixed block size, the
 			// first sample number in the frame can be derived by multiplying the
@@ -156,8 +231,11 @@ func Test_Encoder(t *testing.T) {
 			Header:    hdr,
 			Subframes: subframes,
 		}
+		// t.Logf("Initialized flac frame.Frame with Header: %v", hdr)
 		if err := enc.WriteFrame(f); err != nil {
-			t.Error(err)
+			t.Fatal(err)
 		}
 	}
+
+	t.Logf("flac.Encoder wrote all frames :)")
 }
