@@ -70,7 +70,12 @@ func (c *MediaController) onStatus(message *api.CastMessage) ([]*media.MediaStat
 	return response.Status, nil
 }
 
-// GetStatus attempts to request the chromecast return the status of the current media controller channel
+/*
+# [MediaController.GetStatus]
+
+returns the status of the current media controller channel by
+attempting to request the chromecast device
+*/
 func (c *MediaController) GetStatus(timeout time.Duration) ([]*media.MediaStatus, error) {
 	message, err := c.connection.Request(&getMediaStatus, timeout)
 	if err != nil {
