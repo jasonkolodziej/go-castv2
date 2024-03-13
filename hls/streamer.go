@@ -23,6 +23,8 @@ import (
 	"github.com/pkg/errors"
 )
 
+var SampleQueue = NewQueue("sample")
+
 var httpServer *http.ServeMux = nil
 var serverDebug bool = false
 
@@ -63,7 +65,7 @@ func createHLS(inputFile string, outputDir string, segmentDuration int) error {
 		"-f", "hls",
 		fmt.Sprintf("%s/playlist.m3u8", outputDir),
 	)
-
+	// ffmpegCmd.StdoutPipe()
 	output, err := ffmpegCmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("failed to create HLS: %v\nOutput: %s", err, string(output))

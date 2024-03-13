@@ -18,6 +18,9 @@ require (
 )
 
 require (
+	github.com/icza/bitio v1.1.0 // indirect
+	github.com/mewkiz/flac v1.0.10 // indirect
+	github.com/mewkiz/pkg v0.0.0-20230226050401-4010bf0fec14 // indirect
 	github.com/miekg/dns v1.1.58 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	golang.org/x/mod v0.16.0 // indirect
