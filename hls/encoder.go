@@ -9,7 +9,6 @@ import (
 	logg "github.com/sirupsen/logrus"
 
 	aud "github.com/go-audio/audio"
-	"github.com/go-audio/chunk"
 	"github.com/mewkiz/flac"
 	"github.com/mewkiz/flac/meta"
 )
@@ -33,9 +32,7 @@ var fakeWriter = bytes.NewBuffer([]byte{})
 
 var BroadcasterEncoder = flac.NewEncoder // * example: flac.NewEncoder(fakeWriter, defaultStreamInfo, nil)
 
-var RawAudio = new(chunk.Reader) //* used to pass stdOutPipe or stdOut from exec.Cmd
-
-// var defaultStreamInfo =
+// var RawAudio = new(chunk.Reader) //* used to pass stdOutPipe or stdOut from exec.Cmd
 
 type FLACStream struct {
 	io.ReadWriteCloser
@@ -62,6 +59,7 @@ func (f *FLACStream) readPackets() {
 				logg.Errorf("Failed to read packet length: %s", err)
 				return
 			}
+			s.Info = f.config
 			if reflect.DeepEqual(f.config, s.Info) { // * check to see if the set config made it
 				_, err := s.Next() // * returns the next flac.Frame with Stream.Header ONLY
 				if err != nil {
