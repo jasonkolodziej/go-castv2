@@ -139,7 +139,6 @@ func Test_Encoder(t *testing.T) {
 		// 	subframe := subframes[i%nchannels]
 		// 	subframe.Samples[i/nchannels] = int32(sample) // ! This line panics at frameNum == 82687
 		// }
-
 		// t.Log("Checking if all Samples in SubFrames are the same")
 		// for _, subframe := range subframes { //*  Check if the subframe may be encoded as constant; when all samples are the same
 		// 	sample := subframe.Samples[0]
@@ -154,7 +153,6 @@ func Test_Encoder(t *testing.T) {
 		// 		subframe.SubHeader.Pred = frame.PredConstant
 		// 	}
 		// }
-
 		// Encode FLAC frame.
 		// channels, err := getChannels(nchannels)
 		// if err != nil {
