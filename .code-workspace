@@ -10,6 +10,9 @@
 		"go.testFlags": [
 		    "-test.v"
 		],
+		"gopls": {
+			"ui.semanticTokens": true
+		},
 	},
 	"extensions": {
 		"recommendations": [

@@ -8,7 +8,7 @@
 
 See "[Issue with libpcap]".
 
-[Issue with libpcap]:https://github.com/google/gopacket/issues/280#issuecomment-410145559
+[Issue with libpcap]:(https://github.com/google/gopacket/issues/280#issuecomment-410145559)
 */
 package scanner
 
