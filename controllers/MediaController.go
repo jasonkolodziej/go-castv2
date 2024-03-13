@@ -81,7 +81,7 @@ func (c *MediaController) GetStatus(timeout time.Duration) ([]*media.MediaStatus
 }
 
 // TODO
-// Load sends a load request to play a generic media event
+// Load sends a load request to play a generic media event and returns an `api.CastMessage`
 func (c *MediaController) Load(url string, contentTypeString string, timeout time.Duration) (*api.CastMessage, error) {
 	//TODO should do something about messaging with the contenttype, so it works with different media types. so we can attach more metadata
 	//TODO also should be sending a message of type media data( should probably actually construct the request)
