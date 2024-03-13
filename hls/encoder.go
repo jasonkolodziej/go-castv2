@@ -9,6 +9,7 @@ import (
 	logg "github.com/sirupsen/logrus"
 
 	aud "github.com/go-audio/audio"
+	"github.com/go-audio/chunk"
 	"github.com/mewkiz/flac"
 	"github.com/mewkiz/flac/meta"
 )
@@ -31,6 +32,8 @@ var Broadcaster = flac.New //* used to pass stdOutPipe or stdOut from exec.Cmd
 var fakeWriter = bytes.NewBuffer([]byte{})
 
 var BroadcasterEncoder = flac.NewEncoder // * example: flac.NewEncoder(fakeWriter, defaultStreamInfo, nil)
+
+var RawAudio = new(chunk.Reader) //* used to pass stdOutPipe or stdOut from exec.Cmd
 
 // var defaultStreamInfo =
 
