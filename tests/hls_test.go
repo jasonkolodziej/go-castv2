@@ -197,3 +197,8 @@ func Test_Encoder(t *testing.T) {
 		// t.Logf("flac.Encoder wrote frame #: %v", f.Num)
 	}
 }
+
+func Test_StartServer(t *testing.T) {
+	hls.StartServer(3060)
+	hls.CleanStopServer()
+}

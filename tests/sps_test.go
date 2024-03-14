@@ -1,7 +1,10 @@
 package tests
 
 import (
+	"bufio"
+	"io"
 	"os"
+	"os/exec"
 	"testing"
 
 	"github.com/gitteamer/libconfig"
@@ -29,4 +32,29 @@ func Test_FileParser(t *testing.T) {
 	// gen.Set("airplay_device_id", libconfig.MustParse(`=0xF4L;`).Get(""))
 	// val = gen.Get("airplay_device_id")
 	t.Logf("set to: %s", gen)
+}
+
+func readPipe(p io.ReadCloser, t *testing.T) {
+	reader := bufio.NewReader(p)
+	line, err := reader.ReadString('\n')
+	for err == nil {
+		t.Log(line)
+		line, err = reader.ReadString('\n')
+	}
+}
+
+func Test_SpawnProcess(t *testing.T) {
+	p := exec.Command("shairport-sync", "-h")
+	errPipe, _ := p.StderrPipe()
+	outPipe, _ := p.StdoutPipe() // CombinedOutput() //.Output()
+	if err := p.Start(); err != nil {
+		// handle error
+		t.Fail()
+	}
+	readPipe(errPipe, t)
+
+	t.Log("output")
+
+	readPipe(outPipe, t)
+
 }
