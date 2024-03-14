@@ -28,7 +28,7 @@ var lwarn = logger.Warnf
 var lerr = logger.Errorf
 
 func main() {
-	p := exec.Command("shairport-sync", "-u", "-vv")
+	p := exec.Command("shairport-sync", "-vv")
 	// p := exec.Command("ls", "/usr/local/bin")
 	out, err := p.StdoutPipe()
 	if err != nil {
@@ -46,18 +46,18 @@ func main() {
 		lerr("", err)
 	}
 	// go func() {
-	for scanner.Scan() {
-		// Do something with the line here.
-		// fmt.Println(scanner.Text())
-	}
+	// for scanner.Scan() {
+	// 	// Do something with the line here.
+	// 	fmt.Println(scanner.Text())
+	// }
 	// }()
-	// go func() {
-	for escanner.Scan() {
-		// Do something with the line here.
-		// er = fmt.Errorf("%s%s", er, escanner.Text())
-		fmt.Println(escanner.Text())
-	}
-	// }()
+	go func() {
+		for escanner.Scan() {
+			// Do something with the line here.
+			// er = fmt.Errorf("%s%s", er, escanner.Text())
+			fmt.Println(escanner.Text())
+		}
+	}()
 	if scanner.Err() != nil {
 		p.Process.Kill()
 		p.Wait()
