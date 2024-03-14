@@ -43,18 +43,10 @@ func readPipe(p io.ReadCloser, t *testing.T) {
 	}
 }
 
+// ? https://www.dolthub.com/blog/2022-11-28-go-os-exec-patterns/
 func Test_SpawnProcess(t *testing.T) {
 	p := exec.Command("shairport-sync", "-h")
-	errPipe, _ := p.StderrPipe()
-	outPipe, _ := p.StdoutPipe() // CombinedOutput() //.Output()
-	if err := p.Start(); err != nil {
-		// handle error
-		t.Fail()
-	}
-	readPipe(errPipe, t)
-
-	t.Log("output")
-
-	readPipe(outPipe, t)
+	out, _ := p.CombinedOutput()
+	t.Logf("%s", out)
 
 }
