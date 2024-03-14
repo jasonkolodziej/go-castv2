@@ -6,7 +6,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/beanbee/httpserver-go"
+	"github.com/jasonkolodziej/go-castv2"
+	"github.com/jasonkolodziej/go-castv2/async"
 	logger "github.com/sirupsen/logrus"
 )
 
@@ -25,7 +26,7 @@ func init() {
 type AsyncHandler func([]byte) error
 type SyncHandler func([]byte) ([]byte, error)
 
-var server *httpserver.Server
+var server *async.Server
 
 var linform = logger.Infof
 var ldebug = logger.Debugf
@@ -34,7 +35,7 @@ var lerr = logger.Errorf
 
 func StartServer(port uint) {
 	// create new http server with max async 20 goroutines
-	server = httpserver.NewServer("mytest", int(port)).SetAsyncNum(20) // * Should listen on port specificied across all connected Addresses
+	server = async.NewServer("mytest", int(port)).SetAsyncNum(20) // * Should listen on port specificied across all connected Addresses
 	// handler sync http request
 	// server.HandlerRequst("POST", "/sync", syncDemo)
 
@@ -57,6 +58,13 @@ var asyncDemo AsyncHandler = func(jsonIn []byte) error {
 	return nil
 }
 
+var syncDemo SyncHandler = func(jsonIn []byte) ([]byte, error) {
+	time.Sleep(5 * time.Second)
+	linform("[asyncDemo] jsonIn: %v", string(jsonIn[:]))
+
+	return []byte("ok"), nil
+}
+
 // Will apply paths for extUrl if needed
 func AssignAsyncHandlerPath(cb AsyncHandler, method, baseUrl, extUrl string) {
 	var url = baseUrl
@@ -64,6 +72,14 @@ func AssignAsyncHandlerPath(cb AsyncHandler, method, baseUrl, extUrl string) {
 		url += "/" + extUrl
 	}
 	server.HandlerAsyncRequst(method, url, cb)
+}
+
+func AssignSyncHandlerPath(cb SyncHandler, method, baseUrl, extUrl string) {
+	var url = baseUrl
+	if extUrl != "" {
+		url += "/" + extUrl
+	}
+	server.HandlerRequst(method, url, cb)
 }
 
 func CleanStopServer() {
@@ -77,4 +93,13 @@ func CleanStopServer() {
 		server.Stop()
 	}
 	close(EndChannel)
+}
+
+func GenerateHandleForDevice(d *castv2.Device, async bool) {
+	if async {
+		AssignAsyncHandlerPath(asyncDemo, "GET", d.Info.Id.String(), "stream.flac")
+	} else {
+		AssignSyncHandlerPath(syncDemo, "GET", d.Info.Id.String(), "stream.flac")
+	}
+	// server.SetTaskManager()
 }
