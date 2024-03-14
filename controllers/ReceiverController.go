@@ -11,6 +11,7 @@ import (
 )
 
 // ReceiverController is a chromecast controller for the receiver namespace. This involves
+// ? https://developers.google.com/cast/docs/web_receiver/basic#application_life_cycle
 type ReceiverController struct {
 	interval time.Duration
 	channel  *primitives.Channel

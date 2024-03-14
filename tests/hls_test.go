@@ -194,6 +194,6 @@ func Test_Encoder(t *testing.T) {
 		if err := enc.WriteFrame(f); err != nil {
 			t.Fatal(err)
 		}
+		// t.Logf("flac.Encoder wrote frame #: %v", f.Num)
 	}
-	t.Logf("flac.Encoder wrote all frames :)")
 }
