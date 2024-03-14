@@ -45,8 +45,44 @@ func readPipe(p io.ReadCloser, t *testing.T) {
 
 // ? https://www.dolthub.com/blog/2022-11-28-go-os-exec-patterns/
 func Test_SpawnProcess(t *testing.T) {
-	p := exec.Command("shairport-sync", "-h")
-	out, _ := p.CombinedOutput()
-	t.Logf("%s", out)
+	p := exec.Command("shairport-sync", "-u", "-vv")
+	// p := exec.Command("ls", "/usr/local/bin")
+	out, err := p.StdoutPipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	errno, err := p.StderrPipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	scanner := bufio.NewScanner(out)
+	escanner := bufio.NewScanner(errno)
+	err = p.Start()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for scanner.Scan() {
+		// Do something with the line here.
+		t.Fatal(scanner.Text())
+	}
+	go func() {
+		for escanner.Scan() {
+			// Do something with the line here.
+			t.Log(escanner.Text())
+		}
+	}()
+	if scanner.Err() != nil {
+		p.Process.Kill()
+		p.Wait()
+		t.Fatalf("Output Error: %s", scanner.Err())
+	}
+	if escanner.Err() != nil {
+		p.Process.Kill()
+		p.Wait()
+		t.Fatalf("Error err: %s", escanner.Err())
+	}
+	p.Process.Kill()
+	p.Wait()
+	// t.Logf("%s", out)
 
 }
