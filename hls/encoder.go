@@ -247,15 +247,9 @@ func (p *PacketStream) AsByteBuffer() *bytes.Buffer {
 	return bytes.NewBuffer(*p.Read())
 }
 
-// func (w *PacketStream) WriteWith(bWriter *bufio.Writer) (int, error) {
-// 	var keep = &w.stream.(io.Writer)
-// 	// err := bWriter(w.stream, binary.BigEndian, uint32(len(*data)))
-// 	if err != nil {
-// 		logg.Errorf("Failed to write packet length %d. error:%s", len(*data), err)
-// 		return 0, err
-// 	}
-// 	return w.stream.Write(*data)
-// }
+func (w *PacketStream) WriteWith(bWriter *bufio.Writer) (int, error) {
+	return bWriter.Write(*w.Read())
+}
 
 func Encode(dec *bufio.Scanner) error {
 	dec.Split(bufio.ScanBytes)
