@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/gitteamer/libconfig"
+	"github.com/jasonkolodziej/go-castv2/hls"
 	"github.com/jasonkolodziej/go-castv2/sps"
 )
 
@@ -89,6 +90,35 @@ func Test_SpawnProcess(t *testing.T) {
 
 func Test_SpawnProcessRC(t *testing.T) {
 
-	sps.SpawnProcessRC()
+	P, out, errno := sps.SpawnProcessRC("-vv", "-o", "stdout")
+	defer out.Close()
+	// pwd, _ := os.Getwd()
+	// // op, err := os.Create(pwd + "/data/audiostream.raw")
+	// if err != nil {
+	// 	t.Fatal(err)
+	// }
+	// rw := bufio.NewReadWriter(bufio.NewReader(out), bufio.NewWriter(op))
+	// scanner := bufio.NewScanner(rw)
+	// scanner.Split(bufio.ScanBytes)
+	// go func() {
+	// 	for scanner.Scan() {
+	// 		// Do something with the line here.
+	// 		rw.Write(scanner.Bytes())
+	// 	}
+	// }()
+
+	escanner := bufio.NewScanner(errno)
+	go func() {
+		for escanner.Scan() {
+			// Do something with the line here.
+			t.Log(escanner.Text())
+		}
+	}()
+	// err = rw.Flush()
+	// if err != nil {
+	// 	t.Fatal(err)
+	// }
+	hls.EncodeRC(&out, hls.DefaultStreamInfo)
+	P.Wait()
 
 }

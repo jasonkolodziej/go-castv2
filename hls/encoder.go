@@ -300,15 +300,19 @@ func (w *PacketStream) Read(data []byte) (int, error) {
 
 // Encoder takes bufio.Scanner, dec, that is either the response from a Decoder or
 func EncodeRC(dec *io.ReadCloser, config *meta.StreamInfo) (encoded *bufio.Reader, err error) {
-	defer (*dec).Close()
+	// defer (*dec).Close()
 	// dec := decoderOrStdOutPipe
 	// dec.Split(bufio.ScanBytes)
+	scanner := bufio.NewScanner(*dec)
+	scanner.Split(bufio.ScanBytes)
+	// fr := &frame.Frame{Header: &frame.Header{}}
+	// if err != nil && err != io.EOF {
+	// 	return nil, err
+	// 	// t.Error(err)
+	// }
+
 	b := new(bytes.Buffer)
-	r, err := frame.New(*dec)
-	if err != nil {
-		return nil, err
-		// t.Error(err)
-	}
+
 	rw := bufio.NewReadWriter(bufio.NewReader(b), bufio.NewWriter(b))
 	//var nchannels = &config.NChannels
 
@@ -318,10 +322,21 @@ func EncodeRC(dec *io.ReadCloser, config *meta.StreamInfo) (encoded *bufio.Reade
 		// t.Error(err)
 	}
 	defer enc.Close() // * End of initializing the Encoder
-	//  err := r.Parse()
-	if err = enc.WriteFrame(r); err != nil {
-		return nil, err
+
+	for err == nil {
+		f, err := frame.New(*dec)
+		if err == io.EOF {
+			err = nil
+			continue
+		} else if err != nil {
+			return nil, err
+		}
+		if err = enc.WriteFrame(f); err != nil {
+			return nil, err
+		}
 	}
+	//  err := r.Parse()
+
 	// t.Logf("Initialized flac.Encoder")
 	// if err := dec.FwdToPCM(); err != nil { // * Forward audio frames into the PCM
 	// 	t.Error(err)

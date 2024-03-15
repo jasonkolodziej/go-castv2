@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/exec"
 
-	"github.com/jasonkolodziej/go-castv2/hls"
 	zlog "github.com/rs/zerolog"
 )
 
@@ -15,7 +14,7 @@ const binName = "shairport-sync"
 
 var z = zlog.New(os.Stdout).With().Timestamp().Caller().Logger()
 
-func SpawnProcessRC(args ...string) (out, errno io.ReadCloser) {
+func SpawnProcessRC(args ...string) (proc *exec.Cmd, out, errno io.ReadCloser) {
 	p := exec.Command("shairport-sync", args...)
 	// p := exec.Command("ls", "/usr/local/bin")
 	out, err := p.StdoutPipe() // * io.ReadCloser
@@ -33,7 +32,7 @@ func SpawnProcessRC(args ...string) (out, errno io.ReadCloser) {
 	if err != nil {
 		z.Err(err)
 	}
-	go hls.EncodeRC(&out, hls.DefaultStreamInfo)
+	return p, out, errno
 	// return defer out.Close()
 	// go func() {
 	// 	for outS.Scan() {

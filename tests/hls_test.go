@@ -13,7 +13,7 @@ import (
 )
 
 func Test_Encoder(t *testing.T) {
-	f, _ := loadTestSound(t, "PinkPanther60.wav")
+	f, _ := loadTestSound(t, "audiostream.hex")
 	if f == nil {
 		t.Fatal("Error file was not loaded correctly")
 	}
@@ -196,7 +196,7 @@ func Test_Encoder(t *testing.T) {
 		if err := enc.WriteFrame(f); err != nil {
 			t.Fatal(err)
 		}
-		// t.Logf("flac.Encoder wrote frame #: %v", f.Num)
+		t.Logf("flac.Encoder wrote frame #: %v", f.Num)
 	}
 }
 
