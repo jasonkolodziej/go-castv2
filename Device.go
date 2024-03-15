@@ -9,6 +9,7 @@ import (
 	// "text/scanner"
 	"time"
 
+	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"github.com/hashicorp/mdns"
 	"github.com/jasonkolodziej/go-castv2/configs"
@@ -92,6 +93,17 @@ func (i *DeviceInfo) AirplayDeviceName() (key string, val string) {
 
 func (i *DeviceInfo) IPAddress() string {
 	return i.IpAddress.String()
+}
+
+func (d *Device) FiberDeviceHandler() fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		if c.Params("deviceId") != d.Info.Id.String() {
+			_, name := d.Info.AirplayDeviceName()
+			return c.SendString("Hello " + name)
+			// => Hello john
+		}
+		return c.SendString("Where is john?")
+	}
 }
 
 /*
