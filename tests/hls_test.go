@@ -201,6 +201,5 @@ func Test_Encoder(t *testing.T) {
 }
 
 func Test_StartServer(t *testing.T) {
-	// hls.StartServer(3060)
-	// hls.CleanStopServer()
+	hls.NewFiberServer()
 }

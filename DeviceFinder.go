@@ -38,6 +38,26 @@ func FindDevices(timeout time.Duration, devices chan<- *Device) {
 	go createDeviceObjects(entries, devices)
 }
 
+func appendDeviceInfo(devices <-chan *Device, skipScan bool) {
+	// defer close(devices)
+	router, err := routing.New()
+	if err != nil {
+		log.Fatal("routing error:", err)
+	}
+	for device := range devices {
+		if device.Info == nil || device.Info.IPAddress() == "" || skipScan {
+			return
+		}
+		s, err := scanner.NewScanner(*device.Info.IpAddress, router) //* Create a scanner for the device using mdns.ServiceEntry
+		if err != nil {
+			log.Fatal("scanner error:", err)
+		}
+		mac, err := (*s).GetHwAddr(scanner.DefaultHwAddrParam)
+		device.Info.hwAddr = &mac
+		s.Close()
+	}
+}
+
 func createDeviceObjects(entries <-chan *mdns.ServiceEntry, devices chan<- *Device) {
 	defer close(devices)
 	// Create a new router to use
