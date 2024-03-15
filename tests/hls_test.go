@@ -82,6 +82,7 @@ func Test_Encoder(t *testing.T) {
 
 	buf := hls.AudioBuffer(nil, nchannels, sampleRate, bps)
 	bb := audio.Buffer(buf)
+	// bb.(*audio.PCMBuffer)
 	t.Logf("Number of frames: %v", bb.NumFrames())
 	t.Logf("Initialized an audio.IntBuffer for audio.Buffer(): %v", *buf)
 
@@ -111,7 +112,6 @@ func Test_Encoder(t *testing.T) {
 		t.Log("frame number:", frameNum)
 		nBlockSize := nsamplesPerChannel
 		n, err := dec.PCMBuffer(buf)
-
 		if err != nil {
 			t.Error(err)
 			break

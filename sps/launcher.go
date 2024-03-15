@@ -1,43 +1,116 @@
 package sps
 
 import (
+	"bufio"
 	"fmt"
+	"io"
+	"os"
 	"os/exec"
+
+	"github.com/jasonkolodziej/go-castv2/hls"
+	zlog "github.com/rs/zerolog"
 )
 
 const binName = "shairport-sync"
 
-func SpawnProcess() {
-	// p := exec.Command(binName, "-V")
-	// cmdIn, err := dateCmd.StdinPipe()
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// cmdOut, err := dateCmd.StdoutPipe()
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// cmdErr, err := dateCmd.StderrPipe()
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// dateOut, err := p.Output()
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// fmt.Println("> date")
-	// fmt.Println(string(dateOut))
+var z = zlog.New(os.Stdout).With().Timestamp().Caller().Logger()
 
-	sOut, err := exec.Command(binName).Output()
+func SpawnProcessRC(args ...string) (out, errno io.ReadCloser) {
+	p := exec.Command("shairport-sync", args...)
+	// p := exec.Command("ls", "/usr/local/bin")
+	out, err := p.StdoutPipe() // * io.ReadCloser
 	if err != nil {
-		switch e := err.(type) {
-		case *exec.Error:
-			fmt.Println("exec.Error:", err)
-		case *exec.ExitError:
-			fmt.Println("command exit rc =", e.ExitCode())
-		default:
-			panic(err)
-		}
+		z.Err(err)
 	}
-	fmt.Print(sOut)
+	errno, err = p.StderrPipe()
+	if err != nil {
+		z.Err(err)
+	}
+	// var er error
+	// outS = bufio.NewScanner(out)
+	// errnoS = bufio.NewScanner(errno)
+	err = p.Start()
+	if err != nil {
+		z.Err(err)
+	}
+	go hls.EncodeRC(&out, hls.DefaultStreamInfo)
+	// return defer out.Close()
+	// go func() {
+	// 	for outS.Scan() {
+	// 		// Do something with the line here.
+	// 		fmt.Println(outS.Text())
+	// 	}
+	// }()
+	// go func() {
+	// 	for errnoS.Scan() {
+	// 		// Do something with the line here.
+	// 		// er = fmt.Errorf("%s%s", er, escanner.Text())
+	// 		fmt.Println(errnoS.Text())
+	// 	}
+	// }()
+
+	// if outS.Err() != nil {
+	// 	p.Process.Kill()
+	// 	p.Wait()
+	// 	z.Err(err).Msg("stdOutpipe Scanner")
+	// }
+	// if errnoS.Err() != nil {
+	// 	p.Process.Kill()
+	// 	p.Wait()
+	// 	z.Err(err).Msg("stdErrPipe Scanner")
+	// }
+	// p.Process.Kill()
+	p.Wait()
+	z.Info().Msg("exiting")
+	// t.Logf("%s", out)
+	return
+}
+
+func SpawnProcess(args ...string) (outS, errnoS *bufio.Scanner) {
+	p := exec.Command("shairport-sync", args...)
+	// p := exec.Command("ls", "/usr/local/bin")
+	out, err := p.StdoutPipe() // * io.ReadCloser
+	if err != nil {
+		z.Err(err)
+	}
+	errno, err := p.StderrPipe()
+	if err != nil {
+		z.Err(err)
+	}
+	// var er error
+	outS = bufio.NewScanner(out)
+	errnoS = bufio.NewScanner(errno)
+	err = p.Start()
+	if err != nil {
+		z.Err(err)
+	}
+	// return defer out.Close()
+	go func() {
+		for outS.Scan() {
+			// Do something with the line here.
+			fmt.Println(outS.Text())
+		}
+	}()
+	go func() {
+		for errnoS.Scan() {
+			// Do something with the line here.
+			// er = fmt.Errorf("%s%s", er, escanner.Text())
+			fmt.Println(errnoS.Text())
+		}
+	}()
+	if outS.Err() != nil {
+		p.Process.Kill()
+		p.Wait()
+		z.Err(err).Msg("stdOutpipe Scanner")
+	}
+	if errnoS.Err() != nil {
+		p.Process.Kill()
+		p.Wait()
+		z.Err(err).Msg("stdErrPipe Scanner")
+	}
+	// p.Process.Kill()
+	p.Wait()
+	z.Info().Msg("exiting")
+	// t.Logf("%s", out)
+	return
 }

@@ -26,7 +26,6 @@ func NewFiberServer() {
 	device := devices.Get("/:deviceId?", func(c *fiber.Ctx) error {
 		if c.Params("name") != "" {
 			return c.SendString("Hello " + c.Params("name"))
-			// => Hello john
 		}
 		return c.SendString("Where is john?")
 	})

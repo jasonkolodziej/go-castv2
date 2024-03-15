@@ -86,3 +86,9 @@ func Test_SpawnProcess(t *testing.T) {
 	// t.Logf("%s", out)
 
 }
+
+func Test_SpawnProcessRC(t *testing.T) {
+
+	sps.SpawnProcessRC()
+
+}
