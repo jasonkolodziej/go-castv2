@@ -248,7 +248,7 @@ func (p *PacketStream) AsByteBuffer() *bytes.Buffer {
 }
 
 func (p *PacketStream) AsReaderWriter() *bufio.ReadWriter {
-	return bufio.NewReadWriter(p.AsReaderWriter().Reader, p.AsReaderWriter().Writer)
+	return bufio.NewReadWriter(bufio.NewReader(p.AsByteBuffer()), bufio.NewWriter(p.AsByteBuffer()))
 }
 
 func (w *PacketStream) WriteWith(bWriter *bufio.Writer) (int, error) {
