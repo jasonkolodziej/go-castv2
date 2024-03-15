@@ -225,7 +225,7 @@ func (w *PacketStream) readPackets() {
 	}()
 }
 
-func (w *PacketStream) Read() *[]byte {
+func (w *PacketStream) read() *[]byte {
 	return <-w.packets
 }
 
@@ -244,11 +244,28 @@ func (w *PacketStream) Write(data *[]byte) (int, error) {
 }
 
 func (p *PacketStream) AsByteBuffer() *bytes.Buffer {
-	return bytes.NewBuffer(*p.Read())
+	return bytes.NewBuffer(*p.read())
+}
+
+func (p *PacketStream) AsReaderWriter() *bufio.ReadWriter {
+	return bufio.NewReadWriter(p.AsReaderWriter().Reader, p.AsReaderWriter().Writer)
 }
 
 func (w *PacketStream) WriteWith(bWriter *bufio.Writer) (int, error) {
-	return bWriter.Write(*w.Read())
+	return bWriter.Write(*w.read())
+}
+
+func (w *PacketStream) ReadWith(bReader *bufio.Reader) (int, error) {
+	return bReader.Read(*w.read())
+}
+
+func (w *PacketStream) Read(data []byte) (int, error) {
+	err := binary.Read(w.stream, binary.BigEndian, uint32(len(data)))
+	if err != nil {
+		logg.Errorf("Failed to write packet length %d. error:%s", len(data), err)
+		return 0, err
+	}
+	return w.stream.Read(data)
 }
 
 func Encode(dec *bufio.Scanner) error {
