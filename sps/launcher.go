@@ -85,28 +85,28 @@ func SpawnProcess(args ...string) (outS, errnoS *bufio.Scanner) {
 	return
 }
 
-func CreatePipe() error {
-	// ? Equivalent: $ ls /usr/local/bin | grep pip
-	r, w, err := os.Pipe()
+func SpawnProcessWConfig(configPath string) (out io.ReadCloser, errno io.ReadCloser, err error) {
+	p := exec.Command("shairport-sync", "-c", configPath)
+	out, err = p.StdoutPipe() // * io.ReadCloser
 	if err != nil {
-		return err
+		z.Err(err)
 	}
-	defer r.Close()
-	ls := exec.Command("ls", "/usr/local/bin")
-	ls.Stdout = w
-	err = ls.Start()
+	errno, err = p.StderrPipe()
 	if err != nil {
-		return err
+		z.Err(err)
 	}
-	defer ls.Wait()
-	w.Close()
-	grep := exec.Command("grep", "pip")
-	grep.Stdin = r
-	grep.Stdout = os.Stdout
-	return grep.Run()
+	// outS = bufio.NewScanner(out)
+	// errnoS = bufio.NewScanner(errno)
+	err = p.Start()
+	if err != nil {
+		z.Err(err)
+	}
+
+	z.Info().Msg("exiting")
+	return out, errno, p.Wait()
 }
 
-func SpawnFfMpeg(input io.ReadCloser, args ...string) {
+func SpawnFfMpeg(input io.ReadCloser, args ...string) (output io.ReadCloser, err error) {
 	defer input.Close()
 	// https://ffmpeg.org/ffmpeg-protocols.html#toc-pipe
 	// ? (e.g. 0 for stdin, 1 for stdout, 2 for stderr).
@@ -133,41 +133,74 @@ func SpawnFfMpeg(input io.ReadCloser, args ...string) {
 		DE u32le           PCM unsigned 32-bit little-endian
 		DE u8              PCM unsigned 8-bit
 	*/
-	// shairport-sync -c /etc/shairport-syncKitchenSpeaker.conf -o stdout | ffmpeg -f s16le -ar 44100 -ac 2 -i pipe: -ac 2 -bits_per_raw_sample 8 -c:a flac -y flac_test1.flac
+	// shairport-sync -c /etc/shairport-syncKitchenSpeaker.conf -o stdout
+	// | ffmpeg -f s16le -ar 44100 -ac 2 -i pipe: -ac 2 -bits_per_raw_sample 8 -c:a flac -y flac_test1.flac
 	cmd := exec.Command(
 		txc,
 		// * arguments
-		"-f", "u16le",
+		"-f", "s16le",
 		"-ar", "44100",
 		"-ac", "2",
 		// "-re",         // * encode at 1x playback speed, to not burn the CPU
-		"-i", "pipe:0", // * input from pipe
+		"-i", "pipe:", // * input from pipe
 		// "-ar", "44100", // * AV sampling rate
 		"-c:a", "flac", // * audio codec
-		"-sample_fmt", "44100", // * sampling rate
+		// "-sample_fmt", "44100", // * sampling rate
 		"-ac", "2", // * audio channels, chromecasts don't support more than two audio channels
 		// "-f", "mp4", // * fmt force format
+		"-bits_per_raw_sample", "8",
 		"-movflags", "frag_keyframe+faststart",
 		"-strict", "-experimental",
 		"pipe:1",
 	)
 	cmd.Stdin = input
-	// cmd.Stdout = w
-	output, err := cmd.StdoutPipe()
+	output, err = cmd.StdoutPipe()
 	if err != nil {
-		z.Err(err)
+		z.Err(err).Send()
 	}
 	_, err = cmd.StderrPipe()
 	if err != nil {
-		z.Err(err)
+		z.Err(err).Send()
 	}
 	// go z.Error()
 	err = cmd.Start()
 	if err != nil {
-		z.Err(err)
+		z.Err(err).Send()
 	}
-	cmd.Wait()
-	// if serverDebug {
-	// 	cmd.Stderr = os.Stderr
-	// }
+	return output, cmd.Wait()
+}
+
+func RunPiping(config string) (encoded io.ReadCloser, cErr error) {
+	out, _, cErr := SpawnProcessWConfig(config)
+	if cErr != nil {
+		z.Err(cErr).Msg("shairport-sync Wait():")
+		return nil, cErr
+	}
+	encoded, cErr = SpawnFfMpeg(out)
+	if cErr != nil {
+		z.Err(cErr).Msg("FFMpeg Wait():")
+		return nil, cErr
+	}
+	return encoded, nil
+}
+
+func createPipe() error {
+	// ? Equivalent: $ ls /usr/local/bin | grep pip
+	r, w, err := os.Pipe()
+	if err != nil {
+		return err
+	}
+	defer r.Close()
+	ls := exec.Command("ls", "/usr/local/bin")
+	ls.Stdout = w
+	err = ls.Start()
+	if err != nil {
+		return err
+	}
+	defer ls.Wait()
+	w.Close()
+	grep := exec.Command("grep", "pip")
+	grep.Stdin = r
+	grep.Stdout = os.Stdout
+	return grep.Run()
 }
