@@ -1,6 +1,11 @@
 package hls
 
-import "github.com/gofiber/fiber/v2"
+import (
+	"encoding/json"
+	"fmt"
+
+	"github.com/gofiber/fiber/v2"
+)
 
 var fib = fiber.New(fiber.Config{
 	Prefork:       true,
@@ -20,16 +25,14 @@ var middleware = func(c *fiber.Ctx) error {
 	return c.Next()
 }
 
-func NewFiberServer() {
+func NewFiberServer(deviceHandlers ...fiber.Handler) error {
 	// Create Group
-	devices := fib.Group("/devices/*", middleware)
-	device := devices.Get("/:deviceId?", func(c *fiber.Ctx) error {
-		if c.Params("name") != "" {
-			return c.SendString("Hello " + c.Params("name"))
-		}
-		return c.SendString("Where is john?")
-	})
-	device.Get("/stream.flac", func(c *fiber.Ctx) error {
-		return nil
-	})
+	mdev := append([]fiber.Handler{middleware}, deviceHandlers...)
+	devices := fib.Group("/devices/:deviceId", mdev...)
+	devices.Get("/stream.flac", deviceHandlers...)
+
+	data, _ := json.MarshalIndent(fib.Stack(), "", "  ")
+	fmt.Println(string(data))
+
+	return fib.Listen(":3080")
 }

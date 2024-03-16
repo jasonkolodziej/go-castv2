@@ -36,6 +36,7 @@ func Test_FindDevices(t *testing.T) {
 		// status := device.GetStatus(time.Second * 5)
 		// t.Log(status)
 		_, name := device.Info.AirplayDeviceName()
+		t.Logf("UUID: %s", device.Info.Id.String())
 		if device.Info.IsGroup() {
 			t.Logf("Found Group named ==> %s, with address %v", name, device.Info.IPAddress())
 			t.Log(device.Info)

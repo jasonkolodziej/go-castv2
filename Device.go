@@ -75,6 +75,10 @@ func (i *DeviceInfo) IsGroup() bool {
 	return strings.Contains(i.Md, "Google Cast Group") && (*i.port == CHROMECAST_GROUP)
 }
 
+func (i *DeviceInfo) SetPort(p int) {
+	i.port = &p
+}
+
 func (i *DeviceInfo) IsTv() (bool, string) {
 	return strings.Contains(strings.ToLower(i.Fn), "tv"), i.Md
 }
@@ -98,11 +102,15 @@ func (i *DeviceInfo) IPAddress() string {
 func (d *Device) FiberDeviceHandler() fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		if c.Params("deviceId") != d.Info.Id.String() {
-			_, name := d.Info.AirplayDeviceName()
-			return c.SendString("Hello " + name)
+			return c.SendString("Where is john?")
 			// => Hello john
 		}
-		return c.SendString("Where is john?")
+		_, name := d.Info.AirplayDeviceName()
+		if strings.Contains(c.Path(), "stream.flac") {
+			return c.SendString("Hello " + name + ", I am streaming")
+		}
+		return c.SendString("Hello " + name)
+
 	}
 }
 
@@ -155,18 +163,22 @@ func discoverLocalInterfaces() []net.Interface {
 
 func FromServiceEntryInfo(info []string, svcRecord *mdns.ServiceEntry, mac *net.HardwareAddr) *DeviceInfo {
 	var d DeviceInfo
-	d.port = &svcRecord.Port
-	d.IpAddress = &svcRecord.Addr
 	d.hwAddr = mac
 	d.other = make(map[string]string)
-	for _, item := range info {
-		kv := strings.Split(item, "=")
-		d.other[kv[0]] = kv[1]
+	if svcRecord != nil {
+		d.port = &svcRecord.Port
+		d.IpAddress = &svcRecord.Addr
 	}
-	d.Id = uuid.MustParse(d.other["id"])
-	d.Cd = uuid.MustParse(d.other["cd"])
-	d.Md = d.other["md"]
-	d.Fn = d.other["fn"]
+	if info != nil {
+		for _, item := range info {
+			kv := strings.Split(item, "=")
+			d.other[kv[0]] = kv[1]
+		}
+		d.Id = uuid.MustParse(d.other["id"])
+		d.Cd = uuid.MustParse(d.other["cd"])
+		d.Md = d.other["md"]
+		d.Fn = d.other["fn"]
+	}
 
 	// mac, err := net.ParseMAC(d.other["bs"])
 	return &d
@@ -190,6 +202,37 @@ func NewDevice(record *mdns.ServiceEntry, s *scanner.Scanner) (Device, error) {
 	}
 	s.Close()
 	device.Info = FromServiceEntryInfo(record.InfoFields, record, &mac)
+
+	device.heartbeatController = controllers.NewHeartbeatController(client, defaultChromecastSenderID, defaultChromecastReceiverID)
+	device.heartbeatController.Start()
+
+	device.connectionController = controllers.NewConnectionController(client, defaultChromecastSenderID, defaultChromecastReceiverID)
+	device.connectionController.Connect()
+
+	device.ReceiverController = controllers.NewReceiverController(client, defaultChromecastSenderID, defaultChromecastReceiverID)
+
+	device.MediaController = controllers.NewMediaController(client, defaultChromecastSenderID, device.ReceiverController)
+
+	device.YoutubeController = controllers.NewYoutubeController(client, defaultChromecastSenderID, device.ReceiverController)
+	return device, nil
+}
+
+func NewDeviceFromDeviceInfo(info *DeviceInfo) (Device, error) {
+	var device Device
+
+	client, err := primitives.NewClient(*info.IpAddress, *info.port)
+	if err != nil {
+		return device, err
+	}
+	device.client = client
+	device.Info = info
+
+	// entries := make(chan *mdns.ServiceEntry, 5)
+	// go lookupChromecastMDNSEntries(entries, time.Second*5)
+
+	// for e := range entries {
+
+	// }
 
 	device.heartbeatController = controllers.NewHeartbeatController(client, defaultChromecastSenderID, defaultChromecastReceiverID)
 	device.heartbeatController.Start()

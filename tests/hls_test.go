@@ -3,10 +3,13 @@ package tests
 import (
 	"bufio"
 	"bytes"
+	"net"
 	"testing"
 
 	"github.com/go-audio/audio"
 	"github.com/go-audio/wav"
+	"github.com/google/uuid"
+	cast "github.com/jasonkolodziej/go-castv2"
 	"github.com/jasonkolodziej/go-castv2/hls"
 	"github.com/mewkiz/flac"
 	"github.com/mewkiz/flac/meta"
@@ -198,6 +201,29 @@ func Test_Encoder(t *testing.T) {
 		}
 		t.Logf("flac.Encoder wrote frame #: %v", f.Num)
 	}
+}
+
+func Test_AssembleRoute(t *testing.T) {
+	ip := net.ParseIP("192.168.2.152")
+	mac, err := net.ParseMAC("f4:f5:d8:be:cd:ec")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var findKitchen = cast.FromServiceEntryInfo(nil, nil, &mac)
+	findKitchen.Fn = "Kitchen speaker"
+	findKitchen.Id = uuid.MustParse("a548ff5a-d1fa-c194-1101-acb5a1204788")
+	findKitchen.IpAddress = &ip
+	findKitchen.SetPort(cast.CHROMECAST)
+	kitchen, err := cast.NewDeviceFromDeviceInfo(findKitchen)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = hls.NewFiberServer(kitchen.FiberDeviceHandler())
+	if err != nil {
+		t.Fatal(err)
+	}
+
 }
 
 func Test_StartServer(t *testing.T) {
