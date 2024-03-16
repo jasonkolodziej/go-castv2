@@ -106,7 +106,28 @@ func SpawnProcessWConfig(configPath string) (out io.ReadCloser, errno io.ReadClo
 	return out, errno, p.Wait()
 }
 
-func SpawnFfMpeg(input io.ReadCloser, args ...string) (output io.ReadCloser, err error) {
+func SpawnProcessConfig(configPath ...string) (out io.ReadCloser, errno io.ReadCloser, err error) {
+	p := exec.Command("shairport-sync", configPath...)
+	out, err = p.StdoutPipe() // * io.ReadCloser
+	if err != nil {
+		z.Err(err)
+	}
+	errno, err = p.StderrPipe()
+	if err != nil {
+		z.Err(err)
+	}
+	// outS = bufio.NewScanner(out)
+	// errnoS = bufio.NewScanner(errno)
+	err = p.Start()
+	if err != nil {
+		z.Err(err)
+	}
+
+	z.Info().Msg("returning")
+	return out, errno, p.Wait()
+}
+
+func SpawnFfMpeg(input io.ReadCloser, args ...string) (output io.ReadCloser, errno io.ReadCloser, err error) {
 	defer input.Close()
 	// https://ffmpeg.org/ffmpeg-protocols.html#toc-pipe
 	// ? (e.g. 0 for stdin, 1 for stdout, 2 for stderr).
@@ -158,7 +179,7 @@ func SpawnFfMpeg(input io.ReadCloser, args ...string) (output io.ReadCloser, err
 	if err != nil {
 		z.Err(err).Send()
 	}
-	_, err = cmd.StderrPipe()
+	errno, err = cmd.StderrPipe()
 	if err != nil {
 		z.Err(err).Send()
 	}
@@ -167,21 +188,21 @@ func SpawnFfMpeg(input io.ReadCloser, args ...string) (output io.ReadCloser, err
 	if err != nil {
 		z.Err(err).Send()
 	}
-	return output, cmd.Wait()
+	return output, errno, cmd.Wait()
 }
 
-func RunPiping(config string) (encoded io.ReadCloser, cErr error) {
-	out, _, cErr := SpawnProcessWConfig(config)
+func RunPiping(config string) (encoded io.ReadCloser, spsErr io.ReadCloser, txcErr io.ReadCloser, cErr error) {
+	out, spsErr, cErr := SpawnProcessWConfig(config)
 	if cErr != nil {
 		z.Err(cErr).Msg("shairport-sync Wait():")
-		return nil, cErr
+		return nil, nil, nil, cErr
 	}
-	encoded, cErr = SpawnFfMpeg(out)
+	encoded, txcErr, cErr = SpawnFfMpeg(out)
 	if cErr != nil {
 		z.Err(cErr).Msg("FFMpeg Wait():")
-		return nil, cErr
+		return nil, nil, nil, cErr
 	}
-	return encoded, nil
+	return encoded, spsErr, txcErr, nil
 }
 
 func createPipe() error {

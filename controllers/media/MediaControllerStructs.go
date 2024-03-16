@@ -34,6 +34,17 @@ const BufferedStreamType streamType = "BUFFERED"
 // LiveStreamType is for videos that are livestreaming. (Twitch/Youtube livestreams, etc)
 const LiveStreamType streamType = "LIVE"
 
+func StrToStreamType(s string) streamType {
+	switch s {
+	case string(BufferedStreamType):
+		return BufferedStreamType
+	case string(LiveStreamType):
+		return LiveStreamType
+	default:
+		return NoneStreamType
+	}
+}
+
 // MediaData is data format for message to send to chromecast to play a (vid/image/tvshow/music video/etc) via generic media player.
 // https://developers.google.com/cast/docs/reference/messages#MediaData is the general info.
 type MediaData struct {

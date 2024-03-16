@@ -9,7 +9,6 @@ import (
 	// "text/scanner"
 	"time"
 
-	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"github.com/hashicorp/mdns"
 	"github.com/jasonkolodziej/go-castv2/configs"
@@ -97,21 +96,6 @@ func (i *DeviceInfo) AirplayDeviceName() (key string, val string) {
 
 func (i *DeviceInfo) IPAddress() string {
 	return i.IpAddress.String()
-}
-
-func (d *Device) FiberDeviceHandler() fiber.Handler {
-	return func(c *fiber.Ctx) error {
-		if c.Params("deviceId") != d.Info.Id.String() {
-			return c.SendString("Where is john?")
-			// => Hello john
-		}
-		_, name := d.Info.AirplayDeviceName()
-		if strings.Contains(c.Path(), "stream.flac") {
-			return c.SendString("Hello " + name + ", I am streaming")
-		}
-		return c.SendString("Hello " + name)
-
-	}
 }
 
 /*
@@ -254,10 +238,10 @@ func (device *Device) Play() {
 }
 
 // PlayMedia plays a video via the media controller.
-func (device *Device) PlayMedia(URL string, MIMEType string) {
+func (device *Device) PlayMedia(URL, MIMEType, MediaStreamType string) {
 	appID := configs.MediaReceiverAppID
 	device.ReceiverController.LaunchApplication(&appID, defaultTimeout, false)
-	device.MediaController.Load(URL, MIMEType, defaultTimeout)
+	device.MediaController.Load(URL, MIMEType, MediaStreamType, defaultTimeout)
 }
 
 // QuitApplication that is currently running on the device

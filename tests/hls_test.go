@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 	cast "github.com/jasonkolodziej/go-castv2"
 	"github.com/jasonkolodziej/go-castv2/hls"
+	"github.com/jasonkolodziej/go-castv2/virtual"
 	"github.com/mewkiz/flac"
 	"github.com/mewkiz/flac/meta"
 )
@@ -218,8 +219,8 @@ func Test_AssembleRoute(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	err = hls.NewFiberServer(kitchen.FiberDeviceHandler())
+	K := virtual.NewVirtualDevice(&kitchen)
+	err = hls.NewFiberServer(K.FiberDeviceHandler())
 	if err != nil {
 		t.Fatal(err)
 	}

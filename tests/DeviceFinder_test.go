@@ -83,7 +83,7 @@ func Test_FindSpecific(t *testing.T) {
 	//? load and play remote file
 	// found.QuitApplication()
 	// found.ReceiverController.SetVolume()
-	found.PlayMedia(remoteSoundFile, "audio/mp3")
+	found.PlayMedia(remoteSoundFile, "audio/mp3", "")
 	t.Log("done")
 	found.QuitApplication(time.Second * 5)
 	// if err != nil {

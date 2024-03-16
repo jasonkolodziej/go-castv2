@@ -87,11 +87,11 @@ func (c *MediaController) GetStatus(timeout time.Duration) ([]*media.MediaStatus
 
 // TODO
 // Load sends a load request to play a generic media event and returns an `api.CastMessage`
-func (c *MediaController) Load(url string, contentTypeString string, timeout time.Duration) (*api.CastMessage, error) {
+func (c *MediaController) Load(url string, contentTypeString string, mediaStreamType string, timeout time.Duration) (*api.CastMessage, error) {
 	//TODO should do something about messaging with the contenttype, so it works with different media types. so we can attach more metadata
 	//TODO also should be sending a message of type media data( should probably actually construct the request)
 	//c.GetStatus(defaultTimeout)
-	mediaData, err := c.constructMediaData(url, contentTypeString)
+	mediaData, err := c.constructMediaData(url, contentTypeString, mediaStreamType)
 	if err != nil {
 		return nil, err
 	}
@@ -183,7 +183,7 @@ func (c *MediaController) DisableSubtitles(timeout time.Duration) (*api.CastMess
 }
 
 // constructMediaData returns *media.MediaData packet uses contentTypeString, MIME type, and a url string
-func (c *MediaController) constructMediaData(url string, contentTypeString string) (*media.MediaData, error) {
+func (c *MediaController) constructMediaData(url string, contentTypeString string, mediaStreamType string) (*media.MediaData, error) {
 	contentType, err := media.NewContentType(contentTypeString)
 	if err != nil {
 		return nil, err
@@ -192,7 +192,7 @@ func (c *MediaController) constructMediaData(url string, contentTypeString strin
 	if err != nil {
 		return nil, err
 	}
-	builder, err := media.NewGenericMediaDataBuilder(contentID, contentType, media.NoneStreamType)
+	builder, err := media.NewGenericMediaDataBuilder(contentID, contentType, media.StrToStreamType(mediaStreamType))
 	if err != nil {
 		return nil, err
 	}
