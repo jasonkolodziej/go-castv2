@@ -27,6 +27,7 @@ require (
 	github.com/gofiber/utils v0.0.10 // indirect
 	github.com/gofiber/utils/v2 v2.0.0-beta.3 // indirect
 	github.com/gorilla/schema v1.1.0 // indirect
+	github.com/reugn/go-streams v0.10.0 // indirect
 	github.com/rs/zerolog v1.32.0 // indirect
 )
 

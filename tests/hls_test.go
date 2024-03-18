@@ -230,3 +230,46 @@ func Test_AssembleRoute(t *testing.T) {
 func Test_StartServer(t *testing.T) {
 	hls.NewFiberServer()
 }
+
+func Test_StreamDetection(t *testing.T) {
+	out, _ := loadTestSound(t, "audiostream.hex")
+	defer out.Close()
+	peek := bufio.NewReader(out)
+	peeker := bufio.NewScanner(peek)
+	peeker.Split(bufio.ScanBytes)
+	// var bRead = 0
+	for peeker.Scan() {
+		peeked, err := peek.Peek(4096)
+		tt := bytes.Trim(peeked, "\x00")
+		tt = bytes.Trim(tt, "\xff")
+		if len(peeked) == 4096 && err != nil && len(tt) >= 1 { // * Check to see if there is audio
+			t.Logf("Peeked byte is: %b", peeked)
+		} else {
+			peeker.Text()
+		}
+
+	}
+	// dsrc, _ := virtual.NewDataSource(out, nil)
+
+	// f := flow.NewFilter[io.ReadCloser](
+	// 	func(b io.ReadCloser) bool {
+	// 		peek := bufio.NewReader(out)
+	// 		peeker := bufio.NewScanner(peek)
+	// 		peeker.Split(bufio.ScanBytes)
+	// 		for peeker.Scan() {
+	// 			peeked, err := peek.Peek(1)
+	// 			if len(peeked) == 1 && err != nil { // * Check to see if there is audio
+	// 				t.Logf("Peeked byte is: %b", peeked)
+	// 			}
+	// 			peeker.Bytes()
+	// 		}
+
+	// 		return false
+	// 	}, 1)
+	// // pt := flow.NewPassThrough()
+	// good := dsrc.Via(f)
+	// o := make(<-chan io.ReadCloser) // * Receive only channel
+	// // defer close(o)
+	// good.In() <- o
+	// encoded, txcErr, cErr = sps.SpawnFfMpegWith(o)
+}

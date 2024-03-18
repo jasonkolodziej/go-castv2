@@ -19,6 +19,7 @@ func SpawnProcessRC(args ...string) (proc *exec.Cmd, out, errno io.ReadCloser) {
 	p := exec.Command(spss, args...)
 	// p := exec.Command("ls", "/usr/local/bin")
 	out, err := p.StdoutPipe() // * io.ReadCloser
+
 	if err != nil {
 		z.Err(err)
 	}
@@ -127,7 +128,75 @@ func SpawnProcessConfig(configPath ...string) (out io.ReadCloser, errno io.ReadC
 	return out, errno, p.Wait()
 }
 
+func SpawnFfMpegWith(in <-chan io.ReadCloser, args ...string) (output io.ReadCloser, errno io.ReadCloser, err error) {
+	var input io.ReadCloser
+	input = <-in
+	defer input.Close()
+	// https://ffmpeg.org/ffmpeg-protocols.html#toc-pipe
+	// ? (e.g. 0 for stdin, 1 for stdout, 2 for stderr).
+	/**
+	 * $ ffmpeg -formats | grep PCM
+	 *  DE alaw            PCM A-law
+	 * 	DE f32be           PCM 32-bit floating-point big-endian
+		DE f32le           PCM 32-bit floating-point little-endian
+		DE f64be           PCM 64-bit floating-point big-endian
+		DE f64le           PCM 64-bit floating-point little-endian
+		DE mulaw           PCM mu-law
+		DE s16be           PCM signed 16-bit big-endian
+		DE s16le           PCM signed 16-bit little-endian
+		DE s24be           PCM signed 24-bit big-endian
+		DE s24le           PCM signed 24-bit little-endian
+		DE s32be           PCM signed 32-bit big-endian
+		DE s32le           PCM signed 32-bit little-endian
+		DE s8              PCM signed 8-bit
+		DE u16be           PCM unsigned 16-bit big-endian
+		DE u16le           PCM unsigned 16-bit little-endian
+		DE u24be           PCM unsigned 24-bit big-endian
+		DE u24le           PCM unsigned 24-bit little-endian
+		DE u32be           PCM unsigned 32-bit big-endian
+		DE u32le           PCM unsigned 32-bit little-endian
+		DE u8              PCM unsigned 8-bit
+	*/
+	// shairport-sync -c /etc/shairport-syncKitchenSpeaker.conf -o stdout
+	// | ffmpeg -f s16le -ar 44100 -ac 2 -i pipe: -ac 2 -bits_per_raw_sample 8 -c:a flac -y flac_test1.flac
+	cmd := exec.Command(
+		txc,
+		// * arguments
+		"-f", "s16le",
+		"-ar", "44100",
+		"-ac", "2",
+		// "-re",         // * encode at 1x playback speed, to not burn the CPU
+		"-i", "pipe:", // * input from pipe
+		// "-ar", "44100", // * AV sampling rate
+		"-c:a", "flac", // * audio codec
+		// "-sample_fmt", "44100", // * sampling rate
+		"-ac", "2", // * audio channels, chromecasts don't support more than two audio channels
+		// "-f", "mp4", // * fmt force format
+		"-bits_per_raw_sample", "8",
+		"-movflags", "frag_keyframe+faststart",
+		"-strict", "-experimental",
+		"pipe:1",
+	)
+	cmd.Stdin = input
+	output, err = cmd.StdoutPipe()
+	if err != nil {
+		z.Err(err).Send()
+	}
+	errno, err = cmd.StderrPipe()
+	if err != nil {
+		z.Err(err).Send()
+	}
+	// go z.Error()
+	err = cmd.Start()
+	if err != nil {
+		z.Err(err).Send()
+	}
+	return output, errno, cmd.Wait()
+}
+
 func SpawnFfMpeg(input io.ReadCloser, args ...string) (output io.ReadCloser, errno io.ReadCloser, err error) {
+	//var input io.ReadCloser
+	//input = <-in
 	defer input.Close()
 	// https://ffmpeg.org/ffmpeg-protocols.html#toc-pipe
 	// ? (e.g. 0 for stdin, 1 for stdout, 2 for stderr).
