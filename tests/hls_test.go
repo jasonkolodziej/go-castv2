@@ -3,6 +3,7 @@ package tests
 import (
 	"bufio"
 	"bytes"
+	"io"
 	"net"
 	"testing"
 
@@ -14,6 +15,8 @@ import (
 	"github.com/jasonkolodziej/go-castv2/virtual"
 	"github.com/mewkiz/flac"
 	"github.com/mewkiz/flac/meta"
+	"github.com/reugn/go-streams/extension"
+	"github.com/reugn/go-streams/flow"
 )
 
 func Test_Encoder(t *testing.T) {
@@ -234,42 +237,48 @@ func Test_StartServer(t *testing.T) {
 func Test_StreamDetection(t *testing.T) {
 	out, _ := loadTestSound(t, "audiostream.hex")
 	defer out.Close()
-	peek := bufio.NewReader(out)
-	peeker := bufio.NewScanner(peek)
-	peeker.Split(bufio.ScanBytes)
-	// var bRead = 0
-	for peeker.Scan() {
-		peeked, err := peek.Peek(4096)
-		tt := bytes.Trim(peeked, "\x00")
-		tt = bytes.Trim(tt, "\xff")
-		if len(peeked) == 4096 && err != nil && len(tt) >= 1 { // * Check to see if there is audio
-			t.Logf("Peeked byte is: %b", peeked)
-		} else {
-			peeker.Text()
-		}
+	// peek := bufio.NewReader(out)
+	// peeker := bufio.NewScanner(peek)
+	// peeker.Split(bufio.ScanBytes)
+	// // var bRead = 0
+	// for peeker.Scan() {
+	// 	peeked, err := peek.Peek(4096)
+	// 	tt := bytes.Trim(peeked, "\x00")
+	// 	tt = bytes.Trim(tt, "\xff")
+	// 	if len(peeked) == 4096 && err != nil && len(tt) >= 1 { // * Check to see if there is audio
+	// 		t.Logf("Peeked byte is: %b", peeked)
+	// 	} else {
+	// 		peeker.Text()
+	// 	}
 
-	}
-	// dsrc, _ := virtual.NewDataSource(out, nil)
+	// }
+	dsrc, _ := virtual.NewDataSource(out, nil)
 
-	// f := flow.NewFilter[io.ReadCloser](
-	// 	func(b io.ReadCloser) bool {
-	// 		peek := bufio.NewReader(out)
-	// 		peeker := bufio.NewScanner(peek)
-	// 		peeker.Split(bufio.ScanBytes)
-	// 		for peeker.Scan() {
-	// 			peeked, err := peek.Peek(1)
-	// 			if len(peeked) == 1 && err != nil { // * Check to see if there is audio
-	// 				t.Logf("Peeked byte is: %b", peeked)
-	// 			}
-	// 			peeker.Bytes()
-	// 		}
+	f := flow.NewFilter[io.ReadCloser](
+		func(b io.ReadCloser) bool {
+			peek := bufio.NewReader(out)
+			// peeker := bufio.NewScanner(peek)
+			// peeker.Split(bufio.ScanBytes)
+			// for peeker.Scan() {
+			peeked, err := peek.Peek(1)
+			if len(peeked) == 1 && err != nil { // * Check to see if there is audio
+				return true
+			} else if len(peeked) == 1 && string(peeked) == io.EOF.Error() {
+				t.Log("end of file detected")
+				return true
+			}
+			// peeker.Bytes()
+			// }
+			return false
+		}, 1)
+	// pt := flow.NewPassThrough()
+	sink := extension.NewStdoutSink()
+	other := dsrc.Via(f)
+	other.To(sink)
 
-	// 		return false
-	// 	}, 1)
-	// // pt := flow.NewPassThrough()
-	// good := dsrc.Via(f)
+	sink.In() <- t.Log
 	// o := make(<-chan io.ReadCloser) // * Receive only channel
-	// // defer close(o)
+	// defer close(o)
 	// good.In() <- o
 	// encoded, txcErr, cErr = sps.SpawnFfMpegWith(o)
 }
