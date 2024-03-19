@@ -1,0 +1,43 @@
+{{/* This template will read lines for the sections. */}}
+{{ define "KeyValue" }}
+    {{- $nextKvIdIdx := 1}}
+    {{/* start by splitting the end of each Kv line */}}
+    {{- $KvLines := noEmpty (split . "\r\n") }}
+    {{ $idsOfKvs := wheres $KvLines "=" ";" }}
+    {{/*generate list of KvObjects w/ their associated comments*/}}
+    {{ $KvObjects := createKvs $KvLines $idsOfKvs }}
+{{ end }}
+
+{{ define "Section" }}
+    {{/* start by splitting the end of sections */}}
+    {{- with $sections := noEmpty (split . "};") }} 
+        {{- range $i, $section := $sections }}
+            {{- $startIdx := first "=" $section }}
+            {{/* see if there are comments before section */}}
+            {{- $sectionContent := split $section "{" }}
+            {{- if $sectionContent | len | gt 2 }}
+                {{/* handle subsections */}}
+            {{- end }}
+            {{/* split at newlines & flip assumming comments to get section name */}}
+            {{ $secBegContent := noEmpty (split (index $sectionContent 0) "\r\n") }}
+            {{- printf "-----SECTION--BEGINNING@Idx:%q-----" $i}}
+            {{- println }}
+            {{- printf "[DEBUG]: %i\n %q" $i $secBegContent}}
+            {{- $secName := index (revSlice $secBegContent) 0 }}
+            {{- if (contains $secName "=") }}
+                {{/* trim */}}
+                {{ $secName = trim $secName " =" }}
+                {{/* re-reverse */}}
+                {{ $secBegContent = (slice $secBegContent 1) | revSlice }}
+                {{- else}}
+                {{ println "ERROR JASON" }}
+            {{- end }}
+            {{- println }}
+            {{- printf "Section Name: %q" $secName }}
+            {{ handleSection $secName $secBegContent (index $sectionContent 1) "" "=" ";" }}
+            {{/* template "KeyValue" (index $sectionContent 1) */}}
+        {{- end}}
+    {{- end}}
+{{ end }}
+
+{{ template "Section" $raw := .}}

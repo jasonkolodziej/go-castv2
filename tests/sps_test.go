@@ -9,6 +9,7 @@ import (
 
 	"github.com/gitteamer/libconfig"
 	"github.com/jasonkolodziej/go-castv2/sps"
+	"github.com/jasonkolodziej/go-castv2/sps/parse"
 )
 
 const configFile = "data/example.conf"
@@ -85,4 +86,97 @@ func Test_SpawnProcess(t *testing.T) {
 	p.Wait()
 	// t.Logf("%s", out)
 
+}
+
+// func startup(t *testing.T, useScanner bool) {
+// 	file, ferr := os.Open("../tests/shairport-sync.conf")
+// 	if ferr != nil {
+// 		t.Error(ferr)
+// 	}
+// 	defer file.Close()
+// 	if useScanner {
+// 		tmplScanner = bufio.NewScanner(file)
+// 		return
+// 	}
+// 	if ferr = file.Close(); ferr != nil {
+// 		t.Error(ferr)
+// 	}
+// 	reader, ferr = os.ReadFile("../tests/shairport-sync.conf")
+// 	if ferr != nil {
+// 		t.Error(ferr)
+// 	}
+// }
+
+func Test_Sps_Parser(t *testing.T) {
+	const tmplFile = "shairport-sync.conf2.tmpl"
+	confFile, _ := loadTestFile(t, "shairport-syncKitchenSpeaker.conf", false)
+	reader, err := io.ReadAll(confFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer confFile.Close()
+	// funcMap := template.FuncMap{
+	// 	// (string, substr)
+	// 	"contains":      strings.Contains,
+	// 	"split":         strings.Split,
+	// 	"first":         strings.Index,
+	// 	"trimSpace":     strings.TrimSpace,
+	// 	"trim":          strings.Trim,
+	// 	"revSlice":      parse.Reverse,
+	// 	"noEmpty":       parse.NoEmpty,
+	// 	"where":         parse.MarkWhere,
+	// 	"wheres":        parse.MarkWheres,
+	// 	"createKvs":     parse.CreateKvs,
+	// 	"handleSection": parse.HandleSection,
+	// 	"kvCommented":   parse.KvIsCommented,
+	// 	// "cutSuffix": strings.CutSuffix,
+	// 	// (before, after, found)
+	// 	// "cut": strings.Cut,
+	// }
+
+	reading := string(reader)
+	kvTempl := parse.KeyValue{}
+	kvTempl.SetDelimiters("=", ";", "/ ")
+	// sections := parse.Parse(&reading, &kvTempl, "};", " =", "{")
+	// for i, section := range sections {
+	// 	t.Logf("Section id: %v, Name: %s, Number of Keys: %v", i, section.Name, len(section.KeyValues))
+	// }
+	sections := parse.SplitUpSections(&reading, "};", &kvTempl)
+	sectionNameDelimiter := " ="
+	for i, section := range sections {
+		t.Log("Call FindBeginningOfSection")
+		sDescription, sectionContent := section.FindBeginningOfSection("{", &sectionNameDelimiter)
+		if len(sectionContent) == 2 {
+			t.Log("Call HandleSection")
+			// Handle subsections
+			section.HandleSection(sDescription, sectionContent[1], "")
+		} else {
+			t.Error("sectionContent expected length 2")
+		}
+		t.Logf("Section id: %v, Name: %s, Number of Keys: %v", i, section.Name, len(section.KeyValues))
+	}
+
+	// 	// section.HandleSection(sDescription, sectionContent[1], "", "=", ";")
+	// }
+
+	// New yaml file
+	// f, ferr := os.Create("./templates/config.yaml")
+	// if ferr != nil {
+	// 	t.Fatal(ferr)
+	// }
+	// defer f.Close()
+	// template := template.New(tmplFile).Funcs(funcMap)
+	// template, err = template.ParseFiles("/sps/parse/templates/" + tmplFile)
+	// if err != nil {
+	// 	t.Fatal(err)
+	// }
+	// if err = template.Execute(f, sections); err != nil {
+	// 	t.Fatal(err)
+	// }
+	// f.Close()
+	// t.Logf("%v", sections)
+	// for scanner.Scan() {
+	// 	content := scanner.Text()
+
+	// }
 }

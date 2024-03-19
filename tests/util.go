@@ -45,3 +45,15 @@ func FileIntoBuffer(t *testing.T, f *os.File) *chunk.Reader {
 	return &chunk.Reader{Size: int(fInfo.Size()), R: f}
 	// aBuffer := audio.Buffer(reader)
 }
+
+func loadTestFile(t *testing.T, filename string, useScanner bool) (f *os.File, size int64) {
+	pwd, _ := os.Getwd()
+	t.Log(pwd)
+	f, err := os.Open(pwd + "/data/" + filename)
+	if err != nil {
+		t.Error(err)
+	}
+	fInfo, _ := f.Stat()
+	size = fInfo.Size()
+	return
+}

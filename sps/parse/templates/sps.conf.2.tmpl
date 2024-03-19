@@ -1,0 +1,19 @@
+{{/* This template will read lines for the sections. */}}
+{{- define "Description" }}
+{{- range $i, $line := . }}
+#* {{$line}}
+{{- end }}
+{{- end -}}
+{{- define "KeyValue" }}
+    {{- range $i, $kv := . }}
+    {{- range $i, $line := $kv.Description }}
+    #* {{$line}}
+    {{- end }}
+    {{$kv.KeyName}}: {{if kvCommented $kv }}# {{end}}{{$kv.KeysValue }}
+    {{- end }}
+{{- end }}
+{{- range $i, $section := . }}
+{{ template "Description" $section.Description }}
+{{ $section.Name }}:
+    {{- template "KeyValue" $section.KeyValues }}
+{{- end }}
