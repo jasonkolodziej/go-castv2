@@ -21,6 +21,7 @@
 			"golang.go",
 			"aaron-bond.better-comments",
 			"kevinkyang.auto-comment-blocks",
+			"foxundermoon.shell-format",
 			
 		]
 	},

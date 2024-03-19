@@ -15,3 +15,11 @@ func FileParser(optFilepath string) *libconfig.Value {
 	}
 	return v
 }
+
+var DefaultConfPath = func(zoneName string) string {
+	return "/etc/shairport-sync" + zoneName + ".conf"
+}
+
+var DefaultSystemDServicePath = func(zoneName string) string {
+	return "/etc/shairport-sync" + zoneName + ".conf"
+}

@@ -18,24 +18,18 @@ require (
 	github.com/imroc/req v0.3.2
 	github.com/mewkiz/flac v1.0.10
 	github.com/pkg/errors v0.9.1
+	github.com/reugn/go-streams v0.10.0
+	github.com/rs/zerolog v1.32.0
 	github.com/sirupsen/logrus v1.9.3
 
 )
 
-require (
-	github.com/gofiber/fiber/v3 v3.0.0-20240313181542-df1f877cc0be // indirect
-	github.com/gofiber/utils v0.0.10 // indirect
-	github.com/gofiber/utils/v2 v2.0.0-beta.3 // indirect
-	github.com/gorilla/schema v1.1.0 // indirect
-	github.com/reugn/go-streams v0.10.0 // indirect
-	github.com/rs/zerolog v1.32.0 // indirect
-)
+require github.com/stretchr/testify v1.9.0 // indirect
 
 require (
 	github.com/andybalholm/brotli v1.1.0 // indirect
 	github.com/go-audio/riff v1.0.0 // indirect
-	github.com/gofiber/fiber v1.14.6
-	github.com/gofiber/fiber/v2 v2.52.2 // indirect
+	github.com/gofiber/fiber/v2 v2.52.2
 	github.com/icza/bitio v1.1.0 // indirect
 	github.com/klauspost/compress v1.17.6 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect

@@ -12,7 +12,6 @@ import (
 	"github.com/jasonkolodziej/go-castv2"
 	"github.com/jasonkolodziej/go-castv2/sps"
 	"github.com/reugn/go-streams/extension"
-	"github.com/reugn/go-streams/flow"
 	"github.com/rs/zerolog"
 )
 
@@ -26,7 +25,7 @@ type ProcBundle interface {
 
 type VirtualDevice struct {
 	*castv2.Device
-	content *io.ReadCloser
+	content io.ReadCloser
 	sps     *ProcBundle
 	txCoder *ProcBundle // * Transcoder FfMPeg
 }
@@ -36,6 +35,11 @@ func NewVirtualDevice(d *castv2.Device) *VirtualDevice {
 		return &VirtualDevice{d, nil, nil, nil}
 	}
 	return nil
+}
+
+func (v *VirtualDevice) ZoneName() string {
+	_, n := v.Device.Info.AirplayDeviceName()
+	return n
 }
 
 func (v *VirtualDevice) pathString() string {
@@ -52,6 +56,32 @@ func (v *VirtualDevice) connectDeviceToVirtualStream(urlPath string) error {
 	// 	return err
 	// }
 	return nil
+}
+
+func (v *VirtualDevice) Virtualize() {
+	// * Start SPS
+	n := strings.ReplaceAll(v.ZoneName(), " ", "") // * default device configuration file
+	out, errno, cerr := sps.SpawnProcessWConfig(n) // * exec SPS
+	if cerr != nil {
+		z.Err(cerr).Send()
+	}
+	defer errno.Close()
+	go WriteStdErrnoToLog(errno) // * start collecting the logs of SPS
+	defer out.Close()
+	var cErrno io.ReadCloser
+	v.content, cErrno, cerr = PerformWhenContent(out, sps.SpawnFfMpeg) // * Watch for content then perform an action
+	if cerr != nil {
+		z.Err(cerr).Send()
+	}
+	defer cErrno.Close()
+	go WriteStdErrnoToLog(cErrno)
+}
+
+func WriteStdErrnoToLog(errno io.ReadCloser) {
+	scanner := bufio.NewScanner(errno)
+	for scanner.Scan() {
+		z.Info().Msg(scanner.Text())
+	}
 }
 
 func (v *VirtualDevice) FiberDeviceHandler() fiber.Handler {
@@ -86,7 +116,7 @@ func (v *VirtualDevice) FiberDeviceHandlerWithStream() fiber.Handler {
 		// 	c.SendStatus(500)
 		// }
 		// defer s.Close()
-		return c.SendStream(*v.content)
+		return c.SendStream(v.content)
 	}
 }
 
@@ -135,37 +165,11 @@ func NewDataSink(r io.ReadCloser, w io.WriteCloser) (readerSink, writerSink *ext
 	return extension.NewChanSink(nc), extension.NewChanSink(nc)
 }
 
-func (v *VirtualDevice) Streams(config string) (encoded io.ReadCloser, spsErr io.ReadCloser, txcErr io.ReadCloser, cErr error) {
-	out, spsErr, cErr := sps.SpawnProcessWConfig(config)
-	if cErr != nil {
-		z.Err(cErr).Msg("shairport-sync Wait():")
-		return nil, nil, nil, cErr
+func PerformWhenContent(maybe io.ReadCloser, f func(io.ReadCloser, ...string) (io.ReadCloser, io.ReadCloser, error)) (io.ReadCloser, io.ReadCloser, error) {
+	defer maybe.Close()
+	if sps.PipePeeker(maybe) {
+		z.Info().Stack().Msg("Content detected")
+		return f(maybe)
 	}
-	peeker := bufio.NewReader(out)
-	peeked, err := peeker.Peek(1)
-	if len(peeked) == 1 && err != nil { // * Check to see if there is audio
-
-	}
-	dsrc, _ := NewDataSource(out, nil)
-	f := flow.NewFilter[io.ReadCloser](
-		func(b io.ReadCloser) bool {
-			peeker := bufio.NewReader(out)
-			peeked, err := peeker.Peek(1)
-			if len(peeked) == 1 && err != nil { // * Check to see if there is audio
-				return true
-			}
-			return false
-		}, 1)
-	// pt := flow.NewPassThrough()
-	good := dsrc.Via(f)
-	o := make(<-chan io.ReadCloser) // * Receive only channel
-	// defer close(o)
-	good.In() <- o
-	encoded, txcErr, cErr = sps.SpawnFfMpegWith(o)
-	if cErr != nil {
-		z.Err(cErr).Msg("FFMpeg Wait():")
-		return nil, nil, nil, cErr
-	}
-	return encoded, spsErr, txcErr, nil
-
+	return nil, nil, nil
 }
