@@ -115,46 +115,38 @@ func Test_Sps_Parser(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer confFile.Close()
-	// funcMap := template.FuncMap{
-	// 	// (string, substr)
-	// 	"contains":      strings.Contains,
-	// 	"split":         strings.Split,
-	// 	"first":         strings.Index,
-	// 	"trimSpace":     strings.TrimSpace,
-	// 	"trim":          strings.Trim,
-	// 	"revSlice":      parse.Reverse,
-	// 	"noEmpty":       parse.NoEmpty,
-	// 	"where":         parse.MarkWhere,
-	// 	"wheres":        parse.MarkWheres,
-	// 	"createKvs":     parse.CreateKvs,
-	// 	"handleSection": parse.HandleSection,
-	// 	"kvCommented":   parse.KvIsCommented,
-	// 	// "cutSuffix": strings.CutSuffix,
-	// 	// (before, after, found)
-	// 	// "cut": strings.Cut,
-	// }
 
 	reading := string(reader)
 	kvTempl := parse.KeyValue{}
 	kvTempl.SetDelimiters("=", ";", "/ ")
-	// sections := parse.Parse(&reading, &kvTempl, "};", " =", "{")
-	// for i, section := range sections {
-	// 	t.Logf("Section id: %v, Name: %s, Number of Keys: %v", i, section.Name, len(section.KeyValues))
-	// }
-	sections := parse.SplitUpSections(&reading, "};", &kvTempl)
-	sectionNameDelimiter := " ="
+
+	sections := parse.Parse(&reading, &kvTempl, "{", " =", "};")
 	for i, section := range sections {
-		t.Log("Call FindBeginningOfSection")
-		sDescription, sectionContent := section.FindBeginningOfSection("{", &sectionNameDelimiter)
-		if len(sectionContent) == 2 {
-			t.Log("Call HandleSection")
-			// Handle subsections
-			section.HandleSection(sDescription, sectionContent[1], "")
-		} else {
-			t.Error("sectionContent expected length 2")
-		}
 		t.Logf("Section id: %v, Name: %s, Number of Keys: %v", i, section.Name, len(section.KeyValues))
+		for _, kv := range section.KeyValues {
+			if !kv.KvIsCommented() {
+				t.Logf("Key: %s, found uncommented with value: %v", kv.KeyName, kv.KeysValue)
+			}
+		}
 	}
+	// sections := parse.SplitUpSections(&reading, "};", &kvTempl)
+	// sectionNameDelimiter := " ="
+	// for i, section := range sections {
+	// 	// t.Logf("Section index: %q\n", i)
+	// 	t.Log("Call FindBeginningOfSection")
+	// 	sDescription, sectionContent := section.FindBeginningOfSection("{", &sectionNameDelimiter)
+	// 	t.Log("Call HandleSection")
+	// 	section.HandleSection(sDescription, sectionContent[1], "")
+	// 	t.Logf("Section idx: %v, Name: %s, contains %v keys.", i, section.Name, len(section.KeyValues))
+	// 	for _, kv := range section.KeyValues {
+	// 		if !kv.KvIsCommented() {
+	// 			t.Logf("Key: %s, found uncommented with value: %v", kv.KeyName, kv.KeysValue)
+	// 		}
+	// 	}
+	// 	// section.HandleSection(sDescription, sectionContent[1], "", "=", ";")
+	// }
+
+	t.Log("Done")
 
 	// 	// section.HandleSection(sDescription, sectionContent[1], "", "=", ";")
 	// }

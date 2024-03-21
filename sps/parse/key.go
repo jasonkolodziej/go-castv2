@@ -19,7 +19,7 @@ func KvIsCommented(k KeyValue) bool { return k.isCommented }
 
 func CreateKvLines(rawKv, sep string) []string {
 	if sep == "" {
-		sep = "\r\n"
+		sep = "\n"
 	}
 	return NoEmpty(strings.Split(rawKv, sep))
 }

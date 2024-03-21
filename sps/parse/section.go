@@ -138,14 +138,19 @@ func (s *Section) FindBeginningOfSection(startOfSectionDelimiter string, section
 }
 
 func Parse(rawData *string, kvTemplate *KeyValue, sectionStartDel, sectionNameDel, endSectionDel string) []*Section {
-	sections := SplitUpSections(rawData, "};", kvTemplate)
+	sections := SplitUpSections(rawData, endSectionDel, kvTemplate)
 	for _, section := range sections {
-		section = section.Parse(sectionStartDel, sectionNameDel, endSectionDel)
+		// sDescription, sectionContent := section.FindBeginningOfSection(sectionStartDel, &sectionNameDel)
+		// if len(sectionContent) == 2 {
+		// 	// Handle subsections
+		// 	section.HandleSection(sDescription, sectionContent[1], "")
+		// }
+		section.Parse(sectionStartDel, sectionNameDel)
 	}
 	return sections
 }
 
-func (s *Section) Parse(sectionStartDel, sectionNameDel, endSectionDel string) *Section {
+func (s *Section) Parse(sectionStartDel, sectionNameDel string) *Section {
 	sDescription, sectionContent := s.FindBeginningOfSection(sectionStartDel, &sectionNameDel)
 	if len(sectionContent) == 2 {
 		// Handle subsections
