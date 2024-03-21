@@ -2,6 +2,7 @@ package parse
 
 import (
 	"fmt"
+	"io"
 	"reflect"
 	"strconv"
 	"strings"
@@ -125,4 +126,28 @@ func CreateKvs(allLines []string, kvIdx []int, parent *Section) []KeyValue {
 
 func (kv *KeyValue) Type() reflect.Kind {
 	return kv.valueType
+}
+
+func (k *KeyValue) WriteTo(w io.Writer) (int64, error) {
+	l := len(k.Description)
+	descs := Append(k.Description, "// ")
+	var full string
+	// var inLineComment string
+	var kvLine string
+	if k.KvIsCommented() {
+		kvLine = "//\t" + k.KeyName + " = " + k.KeysValue.(string) + "; "
+	} else {
+		kvLine = "\t" + k.KeyName + " = " + k.KeysValue.(string) + "; "
+	}
+	if l > 1 {
+		kvLine += descs[0] + "\n"
+		full = kvLine + strings.Join(descs[1:], "\n") + "\n"
+	} else if l == 1 {
+		kvLine += descs[0] + "\n"
+	}
+	if full == "" {
+		full = kvLine
+	}
+	n, err := w.Write([]byte(full))
+	return int64(n), err
 }

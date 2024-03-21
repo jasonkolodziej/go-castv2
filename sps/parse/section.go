@@ -1,9 +1,12 @@
 package parse
 
 import (
+	"io"
 	"slices"
 	"strings"
 )
+
+type Sections []*Section
 
 type Section struct {
 	Name        string
@@ -132,6 +135,26 @@ func (s *Section) Parse(sectionStartDel, sectionNameDel string) *Section {
 		s = s.HandleSection(sDescription, sectionContent[1], "")
 	}
 	return s
+}
+
+func (s *Section) WriteTo(w io.Writer) (int64, error) {
+	var totlN int64
+	if len(s.Description) > 0 {
+		n, _ := w.Write([]byte(strings.Join(Append(s.Description, "// "), "\n")))
+		totlN += int64(n)
+	}
+	n, _ := w.Write([]byte("\n"))
+	totlN += int64(n)
+	w.Write([]byte(s.Name + " =\n"))
+	totlN += int64(n)
+	w.Write([]byte("{\n"))
+	totlN += int64(n)
+	for _, kv := range s.KeyValues {
+		n, _ := kv.WriteTo(w)
+		totlN += int64(n)
+	}
+	w.Write([]byte("};\n"))
+	return totlN, nil
 }
 
 func (c *Section) NewParser() Parser {

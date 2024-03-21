@@ -50,6 +50,14 @@ func NoEmpty(strs []string) []string {
 	return r
 }
 
+func Append(strs []string, s string) []string {
+	var r []string
+	for _, str := range strs {
+		r = append(r, s+str)
+	}
+	return r
+}
+
 func MarkWhere(strs []string, where string) []int {
 	var r []int
 	for i, str := range strs {
@@ -105,7 +113,7 @@ func SplitAt(substring string) func(data []byte, atEOF bool) (advance int, token
 	}
 }
 
-func SplitUpSections(rawData *string, endOfSectionDelimiter string, kvTemplate *KeyValue) []*Section {
+func SplitUpSections(rawData *string, endOfSectionDelimiter string, kvTemplate *KeyValue) Sections {
 	data := NoEmpty(strings.Split(*rawData, endOfSectionDelimiter))
 	secs := make([]*Section, len(data))
 	for i := range data {
@@ -117,7 +125,7 @@ func SplitUpSections(rawData *string, endOfSectionDelimiter string, kvTemplate *
 	return secs
 }
 
-func Parse(rawData *string, kvTemplate *KeyValue, sectionStartDel, sectionNameDel, endSectionDel Token) []*Section {
+func Parse(rawData *string, kvTemplate *KeyValue, sectionStartDel, sectionNameDel, endSectionDel Token) Sections {
 	sections := SplitUpSections(rawData, endSectionDel, kvTemplate)
 	for _, section := range sections {
 		section.Parse(sectionStartDel, sectionNameDel)
@@ -125,9 +133,11 @@ func Parse(rawData *string, kvTemplate *KeyValue, sectionStartDel, sectionNameDe
 	return sections
 }
 
-func LoadFile(filename string) (f *os.File, size int64, err error) {
-	pwd, _ := os.Getwd()
-	f, err = os.Open(pwd + filename)
+func LoadFile(wd, filename string) (f *os.File, size int64, err error) {
+	if wd == "" {
+		wd, _ = os.Getwd()
+	}
+	f, err = os.Open(wd + filename)
 	if err != nil {
 		return
 	}
@@ -136,8 +146,8 @@ func LoadFile(filename string) (f *os.File, size int64, err error) {
 	return
 }
 
-func ParseFile(filename string, parser ParserFunc) (sections []*Section, err error) {
-	f, _, err := LoadFile(filename)
+func ParseFile(filename string, parser ParserFunc) (sections Sections, err error) {
+	f, _, err := LoadFile("", filename)
 	if err != nil {
 		return
 	}
@@ -149,4 +159,22 @@ func ParseFile(filename string, parser ParserFunc) (sections []*Section, err err
 	reading := string(reader)
 	kvTemplate, sectionStartDel, sectionNameDel, endSectionDel := parser()
 	return Parse(&reading, kvTemplate, sectionStartDel, sectionNameDel, endSectionDel), nil
+}
+
+func WriteOut(sections Sections, wd, newFilename string) error {
+	if wd == "" {
+		wd, _ = os.Getwd()
+	}
+	f, err := os.Create(wd + newFilename)
+	if err != nil {
+		return err
+	}
+	// f.WriteTo()
+	for _, section := range sections {
+		_, err := section.WriteTo(f)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }

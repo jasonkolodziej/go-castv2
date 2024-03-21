@@ -134,6 +134,7 @@ func Test_Sps_Parser(t *testing.T) {
 			}
 		}
 	}
+	parse.WriteOut(sections, "", "newConf.conf")
 	// sections := parse.SplitUpSections(&reading, "};", &kvTempl)
 	// sectionNameDelimiter := " ="
 	// for i, section := range sections {
