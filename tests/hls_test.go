@@ -223,7 +223,8 @@ func Test_AssembleRoute(t *testing.T) {
 		t.Fatal(err)
 	}
 	K := virtual.NewVirtualDevice(&kitchen)
-	err = hls.NewFiberServer(K.FiberDeviceHandler())
+	go hls.NewFiberServer(K.FiberDeviceHandlerWithStream())
+	err = K.Virtualize() // Sets up sps and mmpeg
 	if err != nil {
 		t.Fatal(err)
 	}

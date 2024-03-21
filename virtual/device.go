@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"strings"
 	"time"
 
@@ -46,35 +47,42 @@ func (v *VirtualDevice) pathString() string {
 	return "/devices/" + v.Info.Id.String() + "/stream.flac"
 }
 
-func (v *VirtualDevice) connectDeviceToVirtualStream(urlPath string) error {
+func (v *VirtualDevice) ConnectDeviceToVirtualStream(hostAndPort string) error {
 	if v == nil { // * basic sanity check
-		return fmt.Errorf("Device not created")
+		return fmt.Errorf("device not created")
 	}
 	v.QuitApplication(time.Second * 5)
-	v.PlayMedia(urlPath, "audio/flac", "LIVE")
+	v.PlayMedia(hostAndPort+v.pathString(), "audio/flac", "LIVE")
 	// if err != nil {
 	// 	return err
 	// }
 	return nil
 }
 
-func (v *VirtualDevice) Virtualize() {
+func (v *VirtualDevice) Virtualize() error {
 	// * Start SPS
-	n := strings.ReplaceAll(v.ZoneName(), " ", "") // * default device configuration file
-	out, errno, cerr := sps.SpawnProcessWConfig(n) // * exec SPS
+	// n := strings.ReplaceAll(v.ZoneName(), " ", "") // * default device configuration file
+	n := "/etc/shairport-syncKitchenSpeaker.conf"
+	out, errno, ss, cerr := sps.SpawnProcessWConfig(n) // * exec SPS
 	if cerr != nil {
 		z.Err(cerr).Send()
 	}
+	defer ss.Wait()
 	defer errno.Close()
 	go WriteStdErrnoToLog(errno) // * start collecting the logs of SPS
-	defer out.Close()
+	// defer out.Close()
 	var cErrno io.ReadCloser
-	v.content, cErrno, cerr = PerformWhenContent(out, sps.SpawnFfMpeg) // * Watch for content then perform an action
+	var ffmpeg *exec.Cmd
+	v.content, cErrno, ffmpeg, cerr = sps.SpawnFfMpeg(out)
 	if cerr != nil {
-		z.Err(cerr).Send()
+		z.Err(cerr).Msg("FFMpeg:")
 	}
+	defer ffmpeg.Wait()
 	defer cErrno.Close()
 	go WriteStdErrnoToLog(cErrno)
+	return nil
+	// err := v.ConnectDeviceToVirtualStream("http://192.168.2.14:3080")
+	// return err
 }
 
 func WriteStdErrnoToLog(errno io.ReadCloser) {
@@ -100,6 +108,7 @@ func (v *VirtualDevice) FiberDeviceHandler() fiber.Handler {
 }
 
 func (v *VirtualDevice) FiberDeviceHandlerWithStream() fiber.Handler {
+	// defer v.content.Close()
 	return func(c *fiber.Ctx) error {
 		_, name := v.Info.AirplayDeviceName() // * Get chromecast Id
 		if c.Params("deviceId") != v.Info.Id.String() {
@@ -129,15 +138,15 @@ func (v *VirtualDevice) OutputWithArgs(configPath ...string) (output io.ReadClos
 	return sps.SpawnProcessConfig(confFlag...)
 }
 
-func (v *VirtualDevice) Chain(config string) (io.ReadCloser, error) {
-	encoded, spsErr, txcErr, cErr := sps.RunPiping(config)
-	if cErr != nil {
-		return nil, cErr
-	}
-	defer txcErr.Close()
-	defer spsErr.Close()
-	return encoded, nil
-}
+// func (v *VirtualDevice) Chain(config string) (io.ReadCloser, error) {
+// 	encoded, spsErr, txcErr, cErr := sps.RunPiping(config)
+// 	if cErr != nil {
+// 		return nil, cErr
+// 	}
+// 	defer txcErr.Close()
+// 	defer spsErr.Close()
+// 	return encoded, nil
+// }
 
 func NewDataSource(r io.ReadCloser, w io.WriteCloser) (readerSource, writerSource *extension.ChanSource) {
 	var nc, nnc chan any = nil, nil

@@ -139,30 +139,66 @@ func Test_Sps_Parser(t *testing.T) {
 }
 
 func Test_PipeFilled(t *testing.T) {
-	out, _, err := sps.SpawnProcessConfig("--output", "stdout")
+	// out, _, err := sps.SpawnProcessConfig()
+	p := exec.Command("shairport-sync", "-vv", "--output", "stdout")
+	out, err := p.StdoutPipe() // * io.ReadCloser
 	if err != nil {
 		t.Fatal(err)
 	}
-	good := make(chan io.ReadCloser)
-
-	go func(out io.ReadCloser, retc chan io.ReadCloser) {
-		peek := bufio.NewReader(out)
-		// peeker := bufio.NewScanner(peek)
-		// peeker.Split(bufio.ScanBytes)
-		// var bRead = 0
-		// for peeker.Scan() {
-		for {
-			if peeked, err := peek.Peek(1); err != nil && len(peeked) == 1 {
-				retc <- out // * there is content in the pipe
-			}
-			retc <- nil
-		}
-	}(out, good)
-
-	o := <-good
-
-	if o != nil {
-		t.Log("Ok")
+	err = p.Start()
+	if err != nil {
+		t.Fatal(err)
 	}
+	defer out.Close()
+	// var v bool
+	peek := bufio.NewReader(out)
+	peeker := bufio.NewScanner(peek)
+	peeker.Split(bufio.ScanBytes)
+
+	//s :=
+	// var bRead = 0
+	for peeker.Scan() {
+		// for err == nil {
+		t.Log(peeker.Text())
+		// peeked, err := peek.Peek(4096)
+		// le := len(peeked)
+		// if err == nil && le == 4096 {
+		// 	v = true
+		// 	peeker.Text()
+		// 	t.Log("Sound")
+		// 	t.Log(p)
+		// } else if err != nil {
+		// 	t.Fatal(err)
+		// } else {
+		// 	v = false
+		// }
+		if err = peeker.Err(); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	t.Log("done ok")
+	p.Wait()
+	// good := make(chan io.ReadCloser)
+
+	// go func(out io.ReadCloser, retc chan io.ReadCloser) {
+	// 	peek := bufio.NewReader(out)
+	// 	// peeker := bufio.NewScanner(peek)
+	// 	// peeker.Split(bufio.ScanBytes)
+	// 	// var bRead = 0
+	// 	// for peeker.Scan() {
+	// 	for {
+	// 		if peeked, err := peek.Peek(1); err != nil && len(peeked) == 1 {
+	// 			retc <- out // * there is content in the pipe
+	// 		}
+	// 		retc <- nil
+	// 	}
+	// }(out, good)
+
+	// o := <-good
+
+	// if o != nil {
+	// 	t.Log("Ok")
+	// }
 
 }

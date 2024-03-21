@@ -56,6 +56,7 @@ var ffmpegArgs = []string{
 	"-ac", "2", // * audio channels, chromecasts don't support more than two audio channels
 	// "-f", "mp4", // * fmt force format
 	"-bits_per_raw_sample", "8",
+	"-f", "flac",
 	"-movflags", "frag_keyframe+faststart",
 	"-strict", "-experimental",
 	"pipe:1", // * output to pipe (stdout->)
@@ -134,25 +135,25 @@ func SpawnProcess(args ...string) (outS, errnoS *bufio.Scanner) {
 	return
 }
 
-func SpawnProcessWConfig(configPath string) (out io.ReadCloser, errno io.ReadCloser, err error) {
-	p := exec.Command("shairport-sync", "-c", configPath)
+func SpawnProcessWConfig(configPath string) (out io.ReadCloser, errno io.ReadCloser, p *exec.Cmd, err error) {
+	p = exec.Command("shairport-sync", "-c", configPath)
 	out, err = p.StdoutPipe() // * io.ReadCloser
 	if err != nil {
-		z.Err(err)
+		z.Err(err).Send()
 	}
 	errno, err = p.StderrPipe()
 	if err != nil {
-		z.Err(err)
+		z.Err(err).Send()
 	}
 	// outS = bufio.NewScanner(out)
 	// errnoS = bufio.NewScanner(errno)
 	err = p.Start()
 	if err != nil {
-		z.Err(err)
+		z.Err(err).Send()
 	}
 
 	z.Info().Msg("exiting")
-	return out, errno, p.Wait()
+	return out, errno, p, nil
 }
 
 func SpawnProcessConfig(configPath ...string) (out io.ReadCloser, errno io.ReadCloser, err error) {
@@ -173,12 +174,12 @@ func SpawnProcessConfig(configPath ...string) (out io.ReadCloser, errno io.ReadC
 	return out, errno, p.Wait()
 }
 
-func SpawnFfMpegWith(in <-chan io.ReadCloser, args ...string) (output io.ReadCloser, errno io.ReadCloser, err error) {
-	var input io.ReadCloser = <-in
-	return SpawnFfMpeg(input, ffmpegArgs...)
-}
+// func SpawnFfMpegWith(in <-chan io.ReadCloser, args ...string) (output io.ReadCloser, errno io.ReadCloser, err error) {
+// 	var input io.ReadCloser = <-in
+// 	return SpawnFfMpeg(input, ffmpegArgs...)
+// }
 
-func SpawnFfMpeg(input io.ReadCloser, args ...string) (output io.ReadCloser, errno io.ReadCloser, err error) {
+func SpawnFfMpeg(input io.ReadCloser, args ...string) (output io.ReadCloser, errno io.ReadCloser, p *exec.Cmd, err error) {
 	defer input.Close()
 	if len(args) == 0 {
 		args = ffmpegArgs
@@ -201,22 +202,24 @@ func SpawnFfMpeg(input io.ReadCloser, args ...string) (output io.ReadCloser, err
 	if err != nil {
 		z.Err(err).Send()
 	}
-	return output, errno, cmd.Wait()
+	return output, errno, cmd, err
 }
 
-func RunPiping(config string) (encoded io.ReadCloser, spsErr io.ReadCloser, txcErr io.ReadCloser, cErr error) {
-	out, spsErr, cErr := SpawnProcessWConfig(config)
-	if cErr != nil {
-		z.Err(cErr).Msg("shairport-sync Wait():")
-		return nil, nil, nil, cErr
-	}
-	encoded, txcErr, cErr = SpawnFfMpeg(out)
-	if cErr != nil {
-		z.Err(cErr).Msg("FFMpeg Wait():")
-		return nil, nil, nil, cErr
-	}
-	return encoded, spsErr, txcErr, nil
-}
+// func RunPiping(config string) (encoded io.ReadCloser, spsErr io.ReadCloser, txcErr io.ReadCloser, cErr error) {
+// 	out, spsErr, cErr := SpawnProcessWConfig(config)
+// 	if cErr != nil {
+// 		z.Err(cErr).Msg("shairport-sync Wait():")
+// 		return nil, nil, nil, cErr
+// 	}
+// 	defer out.Close()
+// 	defer spsErr.Close()
+// 	encoded, txcErr, cErr = SpawnFfMpeg(out)
+// 	if cErr != nil {
+// 		z.Err(cErr).Msg("FFMpeg Wait():")
+// 		return nil, nil, nil, cErr
+// 	}
+// 	return encoded, spsErr, txcErr, nil
+// }
 
 func createPipe() error {
 	// ? Equivalent: $ ls /usr/local/bin | grep pip
