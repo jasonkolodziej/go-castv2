@@ -165,13 +165,10 @@ func SpawnProcessConfig(configPath ...string) (out io.ReadCloser, errno io.ReadC
 	if err != nil {
 		z.Err(err)
 	}
-	// outS = bufio.NewScanner(out)
-	// errnoS = bufio.NewScanner(errno)
 	err = p.Start()
 	if err != nil {
 		z.Err(err)
 	}
-
 	z.Info().Msg("returning")
 	return out, errno, p.Wait()
 }

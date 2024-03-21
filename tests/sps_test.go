@@ -135,22 +135,34 @@ func Test_Sps_Parser(t *testing.T) {
 		}
 	}
 	parse.WriteOut(sections, "", "newConf.conf")
-	// sections := parse.SplitUpSections(&reading, "};", &kvTempl)
-	// sectionNameDelimiter := " ="
-	// for i, section := range sections {
-	// 	// t.Logf("Section index: %q\n", i)
-	// 	t.Log("Call FindBeginningOfSection")
-	// 	sDescription, sectionContent := section.FindBeginningOfSection("{", &sectionNameDelimiter)
-	// 	t.Log("Call HandleSection")
-	// 	section.HandleSection(sDescription, sectionContent[1], "")
-	// 	t.Logf("Section idx: %v, Name: %s, contains %v keys.", i, section.Name, len(section.KeyValues))
-	// 	for _, kv := range section.KeyValues {
-	// 		if !kv.KvIsCommented() {
-	// 			t.Logf("Key: %s, found uncommented with value: %v", kv.KeyName, kv.KeysValue)
-	// 		}
-	// 	}
-	// 	// section.HandleSection(sDescription, sectionContent[1], "", "=", ";")
-	// }
-
 	t.Log("Done")
+}
+
+func Test_PipeFilled(t *testing.T) {
+	out, _, err := sps.SpawnProcessConfig("--output", "stdout")
+	if err != nil {
+		t.Fatal(err)
+	}
+	good := make(chan io.ReadCloser)
+
+	go func(out io.ReadCloser, retc chan io.ReadCloser) {
+		peek := bufio.NewReader(out)
+		// peeker := bufio.NewScanner(peek)
+		// peeker.Split(bufio.ScanBytes)
+		// var bRead = 0
+		// for peeker.Scan() {
+		for {
+			if peeked, err := peek.Peek(1); err != nil && len(peeked) == 1 {
+				retc <- out // * there is content in the pipe
+			}
+			retc <- nil
+		}
+	}(out, good)
+
+	o := <-good
+
+	if o != nil {
+		t.Log("Ok")
+	}
+
 }
