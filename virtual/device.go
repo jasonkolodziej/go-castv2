@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"strings"
 	"time"
 
@@ -43,6 +42,10 @@ func (v *VirtualDevice) ZoneName() string {
 	return n
 }
 
+func (v *VirtualDevice) Content(rc io.ReadCloser) {
+	v.content = rc
+}
+
 func (v *VirtualDevice) pathString() string {
 	return "/devices/" + v.Info.Id.String() + "/stream.flac"
 }
@@ -63,23 +66,16 @@ func (v *VirtualDevice) Virtualize() error {
 	// * Start SPS
 	// n := strings.ReplaceAll(v.ZoneName(), " ", "") // * default device configuration file
 	n := "/etc/shairport-syncKitchenSpeaker.conf"
-	out, errno, ss, cerr := sps.SpawnProcessWConfig(n) // * exec SPS
+	out, spsErr, ffmpegErr, cerr := sps.RunPiping(n) // * exec SPS
 	if cerr != nil {
 		z.Err(cerr).Send()
 	}
-	defer ss.Wait()
-	defer errno.Close()
-	go WriteStdErrnoToLog(errno) // * start collecting the logs of SPS
-	// defer out.Close()
-	var cErrno io.ReadCloser
-	var ffmpeg *exec.Cmd
-	v.content, cErrno, ffmpeg, cerr = sps.SpawnFfMpeg(out)
-	if cerr != nil {
-		z.Err(cerr).Msg("FFMpeg:")
-	}
-	defer ffmpeg.Wait()
-	defer cErrno.Close()
-	go WriteStdErrnoToLog(cErrno)
+	// defer ss.Wait()
+	defer spsErr.Close()
+	go WriteStdErrnoToLog(spsErr) // * start collecting the logs of SPS
+	defer ffmpegErr.Close()
+	go WriteStdErrnoToLog(ffmpegErr)
+	v.content = out
 	return nil
 	// err := v.ConnectDeviceToVirtualStream("http://192.168.2.14:3080")
 	// return err

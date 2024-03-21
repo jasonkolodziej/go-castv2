@@ -223,11 +223,13 @@ func Test_AssembleRoute(t *testing.T) {
 		t.Fatal(err)
 	}
 	K := virtual.NewVirtualDevice(&kitchen)
-	go hls.NewFiberServer(K.FiberDeviceHandlerWithStream())
-	err = K.Virtualize() // Sets up sps and mmpeg
+	// defer ss.Wait()
+	err = hls.NewFiberServer(K.FiberDeviceHandlerWithStream())
+	// err = K.Virtualize() // Sets up sps and mmpeg
 	if err != nil {
 		t.Fatal(err)
 	}
+	// K.ConnectDeviceToVirtualStream("http://192.168.2.14:3080")
 
 }
 

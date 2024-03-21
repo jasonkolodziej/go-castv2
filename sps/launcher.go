@@ -135,8 +135,8 @@ func SpawnProcess(args ...string) (outS, errnoS *bufio.Scanner) {
 	return
 }
 
-func SpawnProcessWConfig(configPath string) (out io.ReadCloser, errno io.ReadCloser, p *exec.Cmd, err error) {
-	p = exec.Command("shairport-sync", "-c", configPath)
+func SpawnProcessWConfig(configPath string) (out io.ReadCloser, errno io.ReadCloser, err error) {
+	p := exec.Command("shairport-sync", "-c", configPath)
 	out, err = p.StdoutPipe() // * io.ReadCloser
 	if err != nil {
 		z.Err(err).Send()
@@ -153,7 +153,7 @@ func SpawnProcessWConfig(configPath string) (out io.ReadCloser, errno io.ReadClo
 	}
 
 	z.Info().Msg("exiting")
-	return out, errno, p, nil
+	return out, errno, p.Wait()
 }
 
 func SpawnProcessConfig(configPath ...string) (out io.ReadCloser, errno io.ReadCloser, err error) {
@@ -179,8 +179,7 @@ func SpawnProcessConfig(configPath ...string) (out io.ReadCloser, errno io.ReadC
 // 	return SpawnFfMpeg(input, ffmpegArgs...)
 // }
 
-func SpawnFfMpeg(input io.ReadCloser, args ...string) (output io.ReadCloser, errno io.ReadCloser, p *exec.Cmd, err error) {
-	defer input.Close()
+func SpawnFfMpeg(input io.ReadCloser, args ...string) (output io.ReadCloser, errno io.ReadCloser, err error) {
 	if len(args) == 0 {
 		args = ffmpegArgs
 	}
@@ -202,24 +201,24 @@ func SpawnFfMpeg(input io.ReadCloser, args ...string) (output io.ReadCloser, err
 	if err != nil {
 		z.Err(err).Send()
 	}
-	return output, errno, cmd, err
+	return output, errno, cmd.Wait()
 }
 
-// func RunPiping(config string) (encoded io.ReadCloser, spsErr io.ReadCloser, txcErr io.ReadCloser, cErr error) {
-// 	out, spsErr, cErr := SpawnProcessWConfig(config)
-// 	if cErr != nil {
-// 		z.Err(cErr).Msg("shairport-sync Wait():")
-// 		return nil, nil, nil, cErr
-// 	}
-// 	defer out.Close()
-// 	defer spsErr.Close()
-// 	encoded, txcErr, cErr = SpawnFfMpeg(out)
-// 	if cErr != nil {
-// 		z.Err(cErr).Msg("FFMpeg Wait():")
-// 		return nil, nil, nil, cErr
-// 	}
-// 	return encoded, spsErr, txcErr, nil
-// }
+func RunPiping(config string) (encoded io.ReadCloser, spsErr io.ReadCloser, txcErr io.ReadCloser, cErr error) {
+	out, spsErr, cErr := SpawnProcessWConfig(config)
+	if cErr != nil {
+		z.Err(cErr).Msg("shairport-sync Wait():")
+		return nil, nil, nil, cErr
+	}
+	defer out.Close()
+	defer spsErr.Close()
+	encoded, txcErr, cErr = SpawnFfMpeg(out)
+	if cErr != nil {
+		z.Err(cErr).Msg("FFMpeg Wait():")
+		return nil, nil, nil, cErr
+	}
+	return encoded, spsErr, txcErr, nil
+}
 
 func createPipe() error {
 	// ? Equivalent: $ ls /usr/local/bin | grep pip
