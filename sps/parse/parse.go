@@ -2,13 +2,16 @@ package parse
 
 import (
 	"bufio"
+	"bytes"
+	"io"
+	"os"
 	"slices"
 	"strings"
 )
 
 // type TokenSet []token.Token
 
-type Token string
+type Token = string
 type TokenSet []Token
 type Parser interface {
 	defaultTokens() TokenSet
@@ -18,6 +21,8 @@ type Parser interface {
 	// Create a new parser
 	NewParser() Parser
 }
+
+type ParserFunc func() (kvTemplate *KeyValue, sectionStartDel, sectionNameDel, endSectionDel string)
 
 type Spacing int
 
@@ -71,4 +76,77 @@ func MarkWheres(strs []string, allWhere ...string) []int {
 		}
 	}
 	return r
+}
+
+// Custom split function. This will split string at 'sbustring' i.e # or // etc....
+func SplitAt(substring string) func(data []byte, atEOF bool) (advance int, token []byte, err error) {
+	searchBytes := []byte(substring)
+	searchLength := len(substring)
+	return func(data []byte, atEOF bool) (advance int, token []byte, err error) {
+		dataLen := len(data)
+
+		// Return Nothing if at the end of file or no data passed.
+		if atEOF && dataLen == 0 {
+			return 0, nil, nil
+		}
+
+		// Find next separator and return token.
+		if i := bytes.Index(data, searchBytes); i >= 0 {
+			return i + searchLength, data[0:i], nil
+		}
+
+		// If we're at EOF, we have a final, non-terminated line. Return it.
+		if atEOF {
+			return dataLen, data, nil
+		}
+
+		// Request more data.
+		return 0, nil, nil
+	}
+}
+
+func SplitUpSections(rawData *string, endOfSectionDelimiter string, kvTemplate *KeyValue) []*Section {
+	data := NoEmpty(strings.Split(*rawData, endOfSectionDelimiter))
+	secs := make([]*Section, len(data))
+	for i := range data {
+		secs[i] = &Section{rawContent: &data[i], endingToken: endOfSectionDelimiter}
+		if kvTemplate != nil {
+			secs[i].SetKvTemplate(*kvTemplate)
+		}
+	}
+	return secs
+}
+
+func Parse(rawData *string, kvTemplate *KeyValue, sectionStartDel, sectionNameDel, endSectionDel Token) []*Section {
+	sections := SplitUpSections(rawData, endSectionDel, kvTemplate)
+	for _, section := range sections {
+		section.Parse(sectionStartDel, sectionNameDel)
+	}
+	return sections
+}
+
+func LoadFile(filename string) (f *os.File, size int64, err error) {
+	pwd, _ := os.Getwd()
+	f, err = os.Open(pwd + filename)
+	if err != nil {
+		return
+	}
+	fInfo, _ := f.Stat()
+	size = fInfo.Size()
+	return
+}
+
+func ParseFile(filename string, parser ParserFunc) (sections []*Section, err error) {
+	f, _, err := LoadFile(filename)
+	if err != nil {
+		return
+	}
+	defer f.Close()
+	reader, err := io.ReadAll(f)
+	if err != nil {
+		return
+	}
+	reading := string(reader)
+	kvTemplate, sectionStartDel, sectionNameDel, endSectionDel := parser()
+	return Parse(&reading, kvTemplate, sectionStartDel, sectionNameDel, endSectionDel), nil
 }

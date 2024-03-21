@@ -1,7 +1,6 @@
 package parse
 
 import (
-	"bytes"
 	"slices"
 	"strings"
 )
@@ -89,17 +88,6 @@ func (sec *Section) HandleSection(description []string, rawKvs string,
 }
 
 // ! Try pointers & use for each
-func SplitUpSections(rawData *string, endOfSectionDelimiter string, kvTemplate *KeyValue) []*Section {
-	data := NoEmpty(strings.Split(*rawData, endOfSectionDelimiter))
-	secs := make([]*Section, len(data))
-	for i := range data {
-		secs[i] = &Section{rawContent: &data[i], endingToken: endOfSectionDelimiter}
-		if kvTemplate != nil {
-			secs[i].SetKvTemplate(*kvTemplate)
-		}
-	}
-	return secs
-}
 
 func (s *Section) FindBeginningOfSection(startOfSectionDelimiter string, sectionNameDelimiter *string) (beginSection []string, sectionContent []string) {
 	s.startingToken = startOfSectionDelimiter
@@ -137,19 +125,6 @@ func (s *Section) FindBeginningOfSection(startOfSectionDelimiter string, section
 	return
 }
 
-func Parse(rawData *string, kvTemplate *KeyValue, sectionStartDel, sectionNameDel, endSectionDel string) []*Section {
-	sections := SplitUpSections(rawData, endSectionDel, kvTemplate)
-	for _, section := range sections {
-		// sDescription, sectionContent := section.FindBeginningOfSection(sectionStartDel, &sectionNameDel)
-		// if len(sectionContent) == 2 {
-		// 	// Handle subsections
-		// 	section.HandleSection(sDescription, sectionContent[1], "")
-		// }
-		section.Parse(sectionStartDel, sectionNameDel)
-	}
-	return sections
-}
-
 func (s *Section) Parse(sectionStartDel, sectionNameDel string) *Section {
 	sDescription, sectionContent := s.FindBeginningOfSection(sectionStartDel, &sectionNameDel)
 	if len(sectionContent) == 2 {
@@ -157,33 +132,6 @@ func (s *Section) Parse(sectionStartDel, sectionNameDel string) *Section {
 		s = s.HandleSection(sDescription, sectionContent[1], "")
 	}
 	return s
-}
-
-// Custom split function. This will split string at 'sbustring' i.e # or // etc....
-func SplitAt(substring string) func(data []byte, atEOF bool) (advance int, token []byte, err error) {
-	searchBytes := []byte(substring)
-	searchLength := len(substring)
-	return func(data []byte, atEOF bool) (advance int, token []byte, err error) {
-		dataLen := len(data)
-
-		// Return Nothing if at the end of file or no data passed.
-		if atEOF && dataLen == 0 {
-			return 0, nil, nil
-		}
-
-		// Find next separator and return token.
-		if i := bytes.Index(data, searchBytes); i >= 0 {
-			return i + searchLength, data[0:i], nil
-		}
-
-		// If we're at EOF, we have a final, non-terminated line. Return it.
-		if atEOF {
-			return dataLen, data, nil
-		}
-
-		// Request more data.
-		return 0, nil, nil
-	}
 }
 
 func (c *Section) NewParser() Parser {

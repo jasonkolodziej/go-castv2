@@ -125,7 +125,12 @@ func Test_Sps_Parser(t *testing.T) {
 		t.Logf("Section id: %v, Name: %s, Number of Keys: %v", i, section.Name, len(section.KeyValues))
 		for _, kv := range section.KeyValues {
 			if !kv.KvIsCommented() {
-				t.Logf("Key: %s, found uncommented with value: %v", kv.KeyName, kv.KeysValue)
+				t.Logf("Key: %s, found uncommented with value: %v, type of: %s", kv.KeyName, kv.KeysValue, kv.Type())
+			}
+			if kv.KeyName == "name" {
+				if err := kv.SetValue("New Name"); err != nil {
+					t.Fatal(err)
+				}
 			}
 		}
 	}
@@ -147,28 +152,4 @@ func Test_Sps_Parser(t *testing.T) {
 	// }
 
 	t.Log("Done")
-
-	// 	// section.HandleSection(sDescription, sectionContent[1], "", "=", ";")
-	// }
-
-	// New yaml file
-	// f, ferr := os.Create("./templates/config.yaml")
-	// if ferr != nil {
-	// 	t.Fatal(ferr)
-	// }
-	// defer f.Close()
-	// template := template.New(tmplFile).Funcs(funcMap)
-	// template, err = template.ParseFiles("/sps/parse/templates/" + tmplFile)
-	// if err != nil {
-	// 	t.Fatal(err)
-	// }
-	// if err = template.Execute(f, sections); err != nil {
-	// 	t.Fatal(err)
-	// }
-	// f.Close()
-	// t.Logf("%v", sections)
-	// for scanner.Scan() {
-	// 	content := scanner.Text()
-
-	// }
 }

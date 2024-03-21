@@ -1,16 +1,22 @@
 package parse
 
-import "strings"
+import (
+	"fmt"
+	"reflect"
+	"strconv"
+	"strings"
+)
 
 type KeyValue struct {
 	parent           *Section
 	KeyName          string
-	KeysValue        interface{}
+	KeysValue        any // interface{}
 	isCommented      bool
 	Description      []string
 	commentDelimiter string
 	valueDelimiter   string
 	nameDelimiter    string
+	valueType        reflect.Kind
 }
 
 func (k KeyValue) KvIsCommented() bool { return k.isCommented }
@@ -43,7 +49,7 @@ func (k *KeyValue) CreateKeyValue() *KeyValue {
 		k.Description[0] = strings.TrimSpace(comment)
 		header = comment
 		if key, val, found := strings.Cut(keyVal, k.nameDelimiter); found {
-			k.KeysValue = val
+			k.KeysValue = strings.TrimSpace(val)
 			key, c := strings.CutPrefix(key, k.commentDelimiter)
 			key = strings.TrimSpace(key)
 			k.isCommented = c
@@ -54,7 +60,39 @@ func (k *KeyValue) CreateKeyValue() *KeyValue {
 	} else {
 		println("Unknown err: trying to split KeyValue from trailing Comment")
 	}
+	k.determineType()
 	return k
+}
+
+func (k *KeyValue) determineType() {
+	vString := k.KeysValue.(string)
+	// val := reflect.ValueOf(k.KeysValue)
+	if strings.Index(vString, "\"") == 0 && // * is the first & last char of the string a quote
+		strings.LastIndex(vString, "\"") == len(vString)-1 { // * mark as string
+		k.valueType = reflect.String
+		return
+	}
+	if _, err := strconv.ParseUint(vString, 10, 0); err == nil {
+		k.valueType = reflect.Uint
+	} else if _, err := strconv.ParseInt(vString, 10, 0); err == nil {
+		k.valueType = reflect.Int
+	} else if _, err := strconv.ParseFloat(vString, 32); err == nil {
+		k.valueType = reflect.Float32
+	} else if _, err := strconv.ParseFloat(vString, 64); err == nil {
+		k.valueType = reflect.Float64
+	} else {
+		k.valueType = reflect.UnsafePointer
+	}
+}
+
+func (k *KeyValue) SetValue(val any) error {
+	t := reflect.TypeOf(val).Kind()
+	if t != k.valueType {
+		return fmt.Errorf("setting value TypeOf.Kind: %s, expected kind %s", t, k.valueType)
+	}
+
+	k.KeysValue = val
+	return nil
 }
 
 func CreateKvs(allLines []string, kvIdx []int, parent *Section) []KeyValue {
@@ -80,30 +118,11 @@ func CreateKvs(allLines []string, kvIdx []int, parent *Section) []KeyValue {
 		}
 		kv.SetDelimiters("=", ";", "//")
 		kv.CreateKeyValue()
-		// // define kv
-		// header := &kv.Description[0]
-		// // split kv and any comment
-		// if keyVal, comment, found := strings.Cut(*header, ";"); found {
-		// 	// println(comment)
-		// 	// println(keyVal)
-		// 	kv.Description[0] = strings.TrimSpace(comment)
-		// 	header = &comment
-		// 	if k, val, found := strings.Cut(keyVal, "="); found {
-		// 		kv.KeysValue = val
-		// 		k, c := strings.CutPrefix(k, "//")
-		// 		k = strings.TrimSpace(k)
-		// 		kv.isCommented = c
-		// 		kv.KeyName = k
-		// 	} else {
-		// 		println("Unknown err: trying to split Key & Value")
-		// 	}
-		// } else {
-		// 	println("Unknown err: trying to split KeyValue from trailing Comment")
-		// }
-
-		// kv.parent = parent
-		// println(kv.keyName)
 		Kvs = append(Kvs, kv)
 	}
 	return Kvs
+}
+
+func (kv *KeyValue) Type() reflect.Kind {
+	return kv.valueType
 }
