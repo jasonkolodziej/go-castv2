@@ -25,7 +25,7 @@ var middleware = func(c *fiber.Ctx) error {
 	return c.Next()
 }
 
-func NewFiberServer(deviceHandlers ...fiber.Handler) error {
+func NewFiberServer(deviceHandlers ...fiber.Handler) *fiber.App {
 	// Create Group
 	mdev := append([]fiber.Handler{middleware}, deviceHandlers...)
 	devices := fib.Group("/devices/:deviceId", mdev...)
@@ -34,5 +34,5 @@ func NewFiberServer(deviceHandlers ...fiber.Handler) error {
 	data, _ := json.MarshalIndent(fib.Stack(), "", "  ")
 	fmt.Println(string(data))
 
-	return fib.Listen(":3080")
+	return fib
 }

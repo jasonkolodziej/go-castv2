@@ -29,7 +29,7 @@ func FindDevice(find *DeviceInfo) (*Device, error) {
 }
 
 // FindDevices searches the LAN for chromecast devices via mDNS and sends them to a channel.
-func FindDevices(timeout time.Duration, devices chan<- *Device) {
+func FindDevices(timeout time.Duration, devices chan<- *Device) { // * recieve only channel
 
 	// Make a channel for results and start listening
 	entries := make(chan *mdns.ServiceEntry, deviceBufferSearchSize)
@@ -58,6 +58,8 @@ func appendDeviceInfo(devices <-chan *Device, skipScan bool) {
 	}
 }
 
+// createDeviceObjects populates devices, a send-only channel, with Device, only when an entry from
+// entries, a recieve-only channel, is properly populated
 func createDeviceObjects(entries <-chan *mdns.ServiceEntry, devices chan<- *Device) {
 	defer close(devices)
 	// Create a new router to use
@@ -82,6 +84,8 @@ func createDeviceObjects(entries <-chan *mdns.ServiceEntry, devices chan<- *Devi
 		devices <- &device
 	}
 }
+
+// lookupChromecastMDNSEntries returns nil after querying and populating entries, a send-only channel, for the time.Duration, timeout.
 func lookupChromecastMDNSEntries(entries chan<- *mdns.ServiceEntry, timeout time.Duration) {
 	defer close(entries)
 	mdns.Query(&mdns.QueryParam{
