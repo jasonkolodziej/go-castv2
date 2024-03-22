@@ -2,7 +2,6 @@ package tests
 
 import (
 	"context"
-	"encoding/json"
 	"io"
 	"net"
 	"os"
@@ -70,25 +69,26 @@ var ffmpegArgs = []string{
 	"pipe:1", // * output to pipe (stdout->)
 }
 
+var fib = fiber.New(fiber.Config{
+	Prefork:       true,
+	CaseSensitive: true,
+	StrictRouting: true,
+	ServerHeader:  "Fiber",
+	AppName:       "Test App v1.0.1",
+	GETOnly:       true,
+})
+
+var middleware = func(c *fiber.Ctx) error {
+	// Set a custom header on all responses:
+	c.Set("Access-Control-Allow-Origin", "*")
+	c.Set("Transfer-Encoding", "chunked")
+	c.Set("X-Custom-Header", "Hello, World")
+	// Go to next middleware:
+	return c.Next()
+}
+
 func TestMain(t *testing.T) {
 	// * Fiber router setup
-	var fib = fiber.New(fiber.Config{
-		Prefork:       true,
-		CaseSensitive: true,
-		StrictRouting: true,
-		ServerHeader:  "Fiber",
-		AppName:       "Test App v1.0.1",
-		GETOnly:       true,
-	})
-
-	var middleware = func(c *fiber.Ctx) error {
-		// Set a custom header on all responses:
-		c.Set("Access-Control-Allow-Origin", "*")
-		c.Set("Transfer-Encoding", "chunked")
-		c.Set("X-Custom-Header", "Hello, World")
-		// Go to next middleware:
-		return c.Next()
-	}
 
 	// * Construct Temp Device
 	ip := net.ParseIP("192.168.2.152")
@@ -112,17 +112,16 @@ func TestMain(t *testing.T) {
 	deviceHandlers := []fiber.Handler{K.FiberDeviceHandlerWithStream()}
 
 	mdev := append([]fiber.Handler{middleware}, deviceHandlers...)
-	devices := fib.Group("/devices/:deviceId", mdev...)
+	device := fib.Group("/devices/:deviceId", mdev...)
+	device.Get("/disconnect", K.DisconnectDeviceHandler())
+	device.Get("/connect", K.ConnectDeviceHandler())
+	device.Get("/stream.flac", deviceHandlers...)
+	virtual.PrintStack(fib)
 
-	devices.Get("/stream.flac", deviceHandlers...)
-	devices.Get("/disconnect", K.DisonnectDeviceHandler())
-	devices.Get("/connect", K.ConnectDeviceHandler())
-
-	data, _ := json.MarshalIndent(fib.Stack(), "", "  ")
-
-	t.Log(data)
-
-	t.Log(fib.Listen(":5000"))
+	err = fib.Listen(":5123")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 }
 

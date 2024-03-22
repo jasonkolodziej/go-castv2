@@ -3,6 +3,7 @@ package virtual
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -148,6 +149,7 @@ func WriteStdErrnoToLog(errno io.ReadCloser) {
 }
 
 func (v *VirtualDevice) ConnectDeviceHandler() fiber.Handler {
+	z.Debug().Msg("ConnectDeviceHandler")
 	return func(c *fiber.Ctx) error {
 		if c.Params("deviceId") != v.Info.Id.String() {
 			return c.SendStatus(500)
@@ -155,14 +157,15 @@ func (v *VirtualDevice) ConnectDeviceHandler() fiber.Handler {
 		if strings.Contains(c.Path(), "connect") {
 			// TODO: ffmpeg and Chromecast application
 			z.Info().Msg(c.Hostname())
-			c.SendString(c.Hostname())
+			return c.SendString(c.Hostname())
 			// v.ConnectDeviceToVirtualStream(c.Hostname())
 		}
 		return c.Next()
 	}
 }
 
-func (v *VirtualDevice) DisonnectDeviceHandler() fiber.Handler {
+func (v *VirtualDevice) DisconnectDeviceHandler() fiber.Handler {
+	z.Debug().Msg("DisonnectDeviceHandler")
 	return func(c *fiber.Ctx) error {
 		if c.Params("deviceId") != v.Info.Id.String() {
 			return c.SendString("Where is john?")
@@ -280,12 +283,14 @@ func MonitorInput(in <-chan io.ReadCloser, stdIn io.Reader) {
 func (v *VirtualDevice) FiberDeviceHandlerWithStream() fiber.Handler {
 	// defer v.content.Close()
 	return func(c *fiber.Ctx) error {
-		_, name := v.Info.AirplayDeviceName() // * Get chromecast Id
+		//_, name := v.Info.AirplayDeviceName() // * Get chromecast Id
 		if c.Params("deviceId") != v.Info.Id.String() {
 			return c.SendString("Where is jason?" + " " + c.Params("deviceId"))
 			// => Hello john
 		} else if !strings.Contains(c.Path(), "stream.flac") { // * does the path not contain `stream.flac`
-			return c.SendString("Hello " + name)
+			z.Debug().Msg("FiberDeviceHandlerWithStream")
+			z.Debug().Msg(c.Path())
+			return c.Next()
 		}
 		content := <-v.content
 		if content == nil {
@@ -308,4 +313,10 @@ func (v *VirtualDevice) Output() (output io.ReadCloser, e io.ReadCloser, err err
 func (v *VirtualDevice) OutputWithArgs(configPath ...string) (output io.ReadCloser, e io.ReadCloser, err error) {
 	var confFlag = append([]string{"-c"}, configPath...)
 	return sps.SpawnProcessConfig(confFlag...)
+}
+
+func PrintStack(app *fiber.App) {
+	data, _ := json.MarshalIndent(app.Stack(), "", "  ")
+	fmt.Println(string(data))
+	// z.Info().Msg(string(data))
 }
