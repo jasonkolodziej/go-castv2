@@ -2,20 +2,73 @@ package virtual
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/jasonkolodziej/go-castv2"
 	"github.com/jasonkolodziej/go-castv2/sps"
-	"github.com/reugn/go-streams/extension"
 	"github.com/rs/zerolog"
 )
 
 var z = zerolog.New(os.Stdout).With().Timestamp().Caller().Logger()
+
+const spss = "shairport-sync"
+const txc = "ffmpeg"
+
+/*
+* ffmpegArgs https://ffmpeg.org/ffmpeg-protocols.html#toc-pipe
+? (e.g. 0 for stdin, 1 for stdout, 2 for stderr).
+  - $ ffmpeg -formats | grep PCM
+  - DE alaw            PCM A-law
+  - DE f32be           PCM 32-bit floating-point big-endian
+  - DE f32le           PCM 32-bit floating-point little-endian
+  - DE f64be           PCM 64-bit floating-point big-endian
+  - DE f64le           PCM 64-bit floating-point little-endian
+  - DE mulaw           PCM mu-law
+  - DE s16be           PCM signed 16-bit big-endian
+  - DE s16le           PCM signed 16-bit little-endian
+  - DE s24be           PCM signed 24-bit big-endian
+  - DE s24le           PCM signed 24-bit little-endian
+  - DE s32be           PCM signed 32-bit big-endian
+  - DE s32le           PCM signed 32-bit little-endian
+  - DE s8              PCM signed 8-bit
+  - DE u16be           PCM unsigned 16-bit big-endian
+  - DE u16le           PCM unsigned 16-bit little-endian
+  - DE u24be           PCM unsigned 24-bit big-endian
+  - DE u24le           PCM unsigned 24-bit little-endian
+  - DE u32be           PCM unsigned 32-bit big-endian
+  - DE u32le           PCM unsigned 32-bit little-endian
+  - DE u8              PCM unsigned 8-bit
+
+Example:
+
+	shairport-sync -c /etc/shairport-syncKitchenSpeaker.conf -o stdout \
+		| ffmpeg -f s16le -ar 44100 -ac 2 -i pipe: -ac 2 -bits_per_raw_sample 8 -c:a flac -y flac_test1.flac
+*/
+var ffmpegArgs = []string{
+	// * arguments
+	"-f", "s16le",
+	"-ar", "44100",
+	"-ac", "2",
+	// "-re",         // * encode at 1x playback speed, to not burn the CPU
+	"-i", "pipe:", // * input from pipe (stdout->stdin)
+	// "-ar", "44100", // * AV sampling rate
+	"-c:a", "flac", // * audio codec
+	// "-sample_fmt", "44100", // * sampling rate
+	"-ac", "2", // * audio channels, chromecasts don't support more than two audio channels
+	// "-f", "mp4", // * fmt force format
+	"-bits_per_raw_sample", "8",
+	"-f", "flac",
+	"-movflags", "frag_keyframe+faststart",
+	"-strict", "-experimental",
+	"pipe:1", // * output to pipe (stdout->)
+}
 
 type ProcBundle interface {
 	Output() (output io.ReadCloser, e io.ReadCloser, err error)
@@ -84,7 +137,7 @@ func (v *VirtualDevice) Virtualize() error {
 func WriteStdErrnoToLog(errno io.ReadCloser) {
 	scanner := bufio.NewScanner(errno)
 	for scanner.Scan() {
-		z.Info().Msg(scanner.Text())
+		z.Warn().Msg(scanner.Text())
 	}
 }
 
@@ -144,37 +197,49 @@ func (v *VirtualDevice) OutputWithArgs(configPath ...string) (output io.ReadClos
 // 	return encoded, nil
 // }
 
-func NewDataSource(r io.ReadCloser, w io.WriteCloser) (readerSource, writerSource *extension.ChanSource) {
-	var nc, nnc chan any = nil, nil
-	if r != nil {
-		nc = make(chan any)
-		nc <- r
+func SpawnCmdWithContext(ctx context.Context, configPath string) io.ReadCloser {
+	ctx, cancel := context.WithCancel(context.Background())
+	var err error
+	sp := exec.CommandContext(ctx, "shairport-sync", "-c", configPath)
+	f := exec.CommandContext(
+		ctx,
+		txc,
+		ffmpegArgs...,
+	)
+	f.Stdin, err = sp.StdoutPipe() // * assign ffmpeg stdin to sps stdout
+	if err != nil {
+		z.Err(err).Send()
+		cancel()
 	}
-	if w != nil {
-		nnc = make(chan any)
-		nnc <- w
+	errno, err := sp.StderrPipe()
+	if err != nil {
+		z.Err(err).Send()
+		cancel()
 	}
-	return extension.NewChanSource(nc), extension.NewChanSource(nc)
-}
-
-func NewDataSink(r io.ReadCloser, w io.WriteCloser) (readerSink, writerSink *extension.ChanSink) {
-	var nc, nnc chan any = nil, nil
-	if r != nil {
-		nc = make(chan any)
-		nc <- r
+	go WriteStdErrnoToLog(errno)
+	errno, err = f.StderrPipe()
+	if err != nil {
+		z.Err(err).Send()
+		cancel()
 	}
-	if w != nil {
-		nnc = make(chan any)
-		nnc <- w
+	go WriteStdErrnoToLog(errno)
+	output, err := f.StdoutPipe()
+	if err != nil {
+		z.Err(err).Send()
+		cancel()
 	}
-	return extension.NewChanSink(nc), extension.NewChanSink(nc)
-}
-
-func PerformWhenContent(maybe io.ReadCloser, f func(io.ReadCloser, ...string) (io.ReadCloser, io.ReadCloser, error)) (io.ReadCloser, io.ReadCloser, error) {
-	defer maybe.Close()
-	if sps.PipePeeker(maybe) {
-		z.Info().Stack().Msg("Content detected")
-		return f(maybe)
+	err = sp.Start()
+	if err != nil {
+		z.Err(err).Send()
+		cancel()
 	}
-	return nil, nil, nil
+	err = f.Start()
+	if err != nil {
+		z.Err(err).Send()
+		cancel()
+	}
+	sp.Wait()
+	f.Wait()
+	ctx.Done()
+	return output
 }

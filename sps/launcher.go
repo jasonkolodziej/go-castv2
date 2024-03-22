@@ -64,6 +64,8 @@ var ffmpegArgs = []string{
 
 var z = zlog.New(os.Stdout).With().Timestamp().Caller().Logger()
 
+// var zz = z.Hook()
+
 func SpawnProcessRC(args ...string) (proc *exec.Cmd, out, errno io.ReadCloser) {
 	p := exec.Command(spss, args...)
 	// p := exec.Command("ls", "/usr/local/bin")
@@ -174,11 +176,6 @@ func SpawnProcessConfig(configPath ...string) (out io.ReadCloser, errno io.ReadC
 	return out, errno, p.Wait()
 }
 
-// func SpawnFfMpegWith(in <-chan io.ReadCloser, args ...string) (output io.ReadCloser, errno io.ReadCloser, err error) {
-// 	var input io.ReadCloser = <-in
-// 	return SpawnFfMpeg(input, ffmpegArgs...)
-// }
-
 func SpawnFfMpeg(input io.ReadCloser, args ...string) (output io.ReadCloser, errno io.ReadCloser, err error) {
 	if len(args) == 0 {
 		args = ffmpegArgs
@@ -239,29 +236,4 @@ func createPipe() error {
 	grep.Stdin = r
 	grep.Stdout = os.Stdout
 	return grep.Run()
-}
-
-func PipePeeker(r io.ReadCloser) (content bool) {
-	// defer r.Close()
-	peek := bufio.NewReader(r)
-	// peeker := bufio.NewScanner(peek)
-	// peeker.Split(bufio.ScanBytes)
-	// var bRead = 0
-	// for peeker.Scan() {
-	for {
-		if peeked, err := peek.Peek(1); err != nil && len(peeked) == 1 {
-			return true // * there is content in the pipe
-		}
-		return false
-	}
-	// tt := bytes.Trim(peeked, "\x00")
-	// tt = bytes.Trim(tt, "\xff")
-	// }
-}
-
-func PerformWhenContent(maybe io.ReadCloser, f func(io.ReadCloser, ...string) (io.ReadCloser, io.ReadCloser, error)) {
-	defer maybe.Close()
-	if PipePeeker(maybe) {
-		go f(maybe)
-	}
 }
