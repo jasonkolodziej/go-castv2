@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"time"
 
 	"dario.cat/mergo"
@@ -11,7 +12,10 @@ import (
 	"github.com/jasonkolodziej/go-castv2/api"
 	"github.com/jasonkolodziej/go-castv2/controllers/media"
 	"github.com/jasonkolodziej/go-castv2/primitives"
+	"github.com/rs/zerolog"
 )
+
+var z = zerolog.New(os.Stdout).With().Timestamp().Caller().Logger()
 
 /*
 MediaController is a type of chromecast controller.
@@ -79,7 +83,7 @@ attempting to request the chromecast device
 func (c *MediaController) GetStatus(timeout time.Duration) ([]*media.MediaStatus, error) {
 	message, err := c.connection.Request(&getMediaStatus, timeout)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to get media status: %s", err)
+		return nil, fmt.Errorf("failed to get media status: %s", err)
 	}
 
 	return c.onStatus(message)
@@ -97,10 +101,12 @@ func (c *MediaController) Load(url string, contentTypeString string, mediaStream
 	}
 	loadCommand := c.constructLoadCommand(mediaData)
 
-	_, err = c.connection.Request(&loadCommand, timeout)
+	m, err := c.connection.Request(&loadCommand, timeout)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to send play command: %s", err)
+		z.Err(err).Msg("failed to send play command:")
+		return nil, err
 	}
+	z.Info().Any("responseMessage", m).Msg("MediaController.Load")
 	return nil, nil
 }
 

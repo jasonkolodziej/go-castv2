@@ -3,6 +3,7 @@ package castv2
 import (
 	"fmt"
 	"net"
+	"os"
 	"reflect"
 	"strings"
 
@@ -17,6 +18,7 @@ import (
 	"github.com/jasonkolodziej/go-castv2/controllers/receiver"
 	"github.com/jasonkolodziej/go-castv2/primitives"
 	"github.com/jasonkolodziej/go-castv2/scanner"
+	"github.com/rs/zerolog"
 )
 
 const defaultTimeout = time.Second * 10
@@ -27,6 +29,8 @@ const (
 	CHROMECAST       Port = 8009
 	CHROMECAST_GROUP Port = 32187
 )
+
+var z = zerolog.New(os.Stdout).With().Timestamp().Caller().Logger()
 
 // Device Object to run basic chromecast commands
 type Device struct {
@@ -241,7 +245,12 @@ func (device *Device) Play() {
 func (device *Device) PlayMedia(URL, MIMEType, MediaStreamType string) {
 	appID := configs.MediaReceiverAppID
 	device.ReceiverController.LaunchApplication(&appID, defaultTimeout, false)
-	device.MediaController.Load(URL, MIMEType, MediaStreamType, defaultTimeout)
+	m, err := device.MediaController.Load(URL, MIMEType, MediaStreamType, defaultTimeout)
+	if err != nil {
+		z.Err(err).Msg("Device.PlayMedia:")
+	}
+	z.Info().Any("castMessage", m).Msg("Device.PlayMedia:")
+
 }
 
 // QuitApplication that is currently running on the device
