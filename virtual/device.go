@@ -6,14 +6,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
-	"mime"
 	"net"
-	"net/http"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
@@ -424,122 +419,6 @@ func (v *VirtualDevice) FiberDeviceHandlerWithStream() fiber.Handler {
 		// defer s.Close()
 		return c.SendStream(content)
 	}
-}
-
-func (v *VirtualDevice) StreamVideo(ctx *fiber.Ctx) error {
-	z.Debug().Msg("StreamAudio2")
-	if ctx.Params("deviceId") != v.Info.Id.String() {
-		return ctx.SendStatus(504)
-		// => Hello john
-	} else if !strings.Contains(ctx.Path(), "stream") { // * does the path not contain `stream.flac`
-		return ctx.Next()
-	}
-	pwd, _ := os.Getwd()
-	z.Debug().Msgf("StreamAudio2: %s", pwd)
-	filePath := pwd + "/data/flac_test1.wav"
-	// file := "video.mp4"
-	return ctx.SendFile(filePath, true)
-}
-
-func (v *VirtualDevice) StreamAudio(ctx *fiber.Ctx) error {
-	z.Debug().Msg("StreamAudio")
-	if ctx.Params("deviceId") != v.Info.Id.String() {
-		return ctx.SendStatus(504)
-		// => Hello john
-	} else if !strings.Contains(ctx.Path(), "stream") { // * does the path not contain `stream.flac`
-		return ctx.Next()
-	}
-	pwd, _ := os.Getwd()
-	z.Debug().Msgf("StreamAudio: %s", pwd)
-	filePath := pwd + "/data/flac_test1.wav"
-
-	// Open the video file
-	file, err := os.Open(filePath)
-	if err != nil {
-		log.Println("Error opening audio file:", err)
-		return ctx.Status(fiber.StatusInternalServerError).SendString("Internal Server Error")
-	}
-	defer file.Close()
-
-	// Get the file size
-	fileInfo, err := file.Stat()
-	if err != nil {
-		log.Println("Error getting file information:", err)
-		return ctx.Status(fiber.StatusInternalServerError).SendString("Internal Server Error")
-	}
-
-	// get the file mime informations
-	mimeType := mime.TypeByExtension(filepath.Ext(filePath))
-	z.Debug().Msgf("MIMEType: %s", mimeType)
-
-	// get file size
-	fileSize := fileInfo.Size()
-
-	// Get the range header from the request
-	rangeHeader := ctx.GetRespHeader("range") // * ctx.GetReqHeaders()["range"]
-	if rangeHeader != "" {
-		var start, end int64
-
-		ranges := strings.Split(rangeHeader, "=")
-		if len(ranges) != 2 {
-			log.Println("Invalid Range Header:", err)
-			return ctx.Status(http.StatusInternalServerError).SendString("Internal Server Error")
-		}
-
-		byteRange := ranges[1]
-		byteRanges := strings.Split(byteRange, "-")
-
-		// get the start range
-		start, err := strconv.ParseInt(byteRanges[0], 10, 64)
-		if err != nil {
-			log.Println("Error parsing start byte position:", err)
-			return ctx.Status(fiber.StatusInternalServerError).SendString("Internal Server Error")
-		}
-
-		// Calculate the end range
-		if len(byteRanges) > 1 && byteRanges[1] != "" {
-			end, err = strconv.ParseInt(byteRanges[1], 10, 64)
-			if err != nil {
-				log.Println("Error parsing end byte position:", err)
-				return ctx.Status(fiber.StatusInternalServerError).SendString("Internal Server Error")
-			}
-		} else {
-			end = fileSize - 1
-		}
-
-		// Setting required response headers
-		ctx.Set(fiber.HeaderContentRange, fmt.Sprintf("bytes %d-%d/%d", start, end, fileInfo.Size())) // Set the Content-Range header
-		ctx.Set(fiber.HeaderContentLength, strconv.FormatInt(end-start+1, 10))                        // Set the Content-Length header for the range being served
-		ctx.Set(fiber.HeaderContentType, mimeType)                                                    // Set the Content-Type
-		ctx.Set(fiber.HeaderAcceptRanges, "bytes")                                                    // Set Accept-Ranges
-		ctx.Status(fiber.StatusPartialContent)                                                        // Set the status code to 206 (Partial Content)
-
-		// Seek to the start position
-		_, seekErr := file.Seek(start, io.SeekStart)
-		if seekErr != nil {
-			log.Println("Error seeking to start position:", seekErr)
-			return ctx.Status(fiber.StatusInternalServerError).SendString("Internal Server Error")
-		}
-
-		// Copy the specified range of bytes to the response
-		_, copyErr := io.CopyN(ctx.Response().BodyWriter(), file, end-start+1)
-		if copyErr != nil {
-			log.Println("Error copying bytes to response:", copyErr)
-			return ctx.Status(fiber.StatusInternalServerError).SendString("Internal Server Error")
-		}
-
-	} else {
-		// If no Range header is present, serve the entire video
-		ctx.Set("Content-Length", strconv.FormatInt(fileSize, 10))
-		_, copyErr := io.Copy(ctx.Response().BodyWriter(), file)
-		if copyErr != nil {
-			log.Println("Error copying entire file to response:", copyErr)
-			return ctx.Status(fiber.StatusInternalServerError).SendString("Internal Server Error")
-		}
-	}
-
-	return nil
-
 }
 
 func (v *VirtualDevice) Output() (output io.ReadCloser, e io.ReadCloser, err error) {

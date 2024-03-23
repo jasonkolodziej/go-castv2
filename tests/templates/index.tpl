@@ -7,9 +7,7 @@
 </head>
 <body>
 
-<video src="http://192.168.2.14:5123/stream" controls autoplay>
-    <!-- No source initially -->
-    Your browser does not support the video tag.
+<video controls autoplay src="http://192.168.2.14:5123/stream">
 </video>
 </body>
 </html>

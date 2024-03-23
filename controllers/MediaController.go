@@ -97,16 +97,17 @@ func (c *MediaController) Load(url string, contentTypeString string, mediaStream
 	//c.GetStatus(defaultTimeout)
 	mediaData, err := c.constructMediaData(url, contentTypeString, mediaStreamType)
 	if err != nil {
+		z.Err(err).Msg("Load:constructMediaData")
 		return nil, err
 	}
 	loadCommand := c.constructLoadCommand(mediaData)
 
 	m, err := c.connection.Request(&loadCommand, timeout)
 	if err != nil {
-		z.Err(err).Msg("failed to send play command:")
+		z.Err(err).Msg("Load:failed to send play command:")
 		return nil, err
 	}
-	z.Info().Any("responseMessage", m).Msg("MediaController.Load")
+	z.Debug().Any("responseMessage", m).Msg("MediaController.Load")
 	return nil, nil
 }
 
@@ -200,12 +201,15 @@ func (c *MediaController) constructMediaData(url string, contentTypeString strin
 	}
 	builder, err := media.NewGenericMediaDataBuilder(contentID, contentType, media.StrToStreamType(mediaStreamType))
 	if err != nil {
+		z.Err(err).Msg("GenericMediaDataBuilder")
 		return nil, err
 	}
+	z.Debug().Any("GenericMediaDataBuilder", builder)
 	mediaData, err := builder.Build()
 	if err != nil {
 		return nil, err
 	}
+	z.Debug().Any("GenericMediaDataBuilder.Build", &mediaData)
 	return &mediaData, nil
 }
 

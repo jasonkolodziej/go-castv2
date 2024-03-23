@@ -69,9 +69,9 @@ func (c *ReceiverController) GetStatus(timeout time.Duration) (*receiver.Receive
 LaunchApplication attempts to launch an application on the chromecast.
 forceLaunch forces the app to run even if something is already running.
 */
-func (c *ReceiverController) LaunchApplication(appID *string, timeout time.Duration, forceLaunch bool) {
+func (c *ReceiverController) LaunchApplication(appID *string, timeout time.Duration, forceLaunch bool) (response *api.CastMessage, err error) {
 	//TODO: test out force launch and actually write it.
-	c.channel.Request(&receiver.LaunchRequest{
+	return c.channel.Request(&receiver.LaunchRequest{
 		PayloadHeaders: primitives.PayloadHeaders{Type: receiverControllerSystemEventLaunch},
 		AppID:          appID,
 	}, timeout)
@@ -79,8 +79,8 @@ func (c *ReceiverController) LaunchApplication(appID *string, timeout time.Durat
 
 // TODO: so application termination requires sessionID, need to figure out how to rewrite code to work with that.
 // Actually, you know what? we could do it so that there is a wrapper that sends requests to these thingies.
-func (c *ReceiverController) StopApplication(sessionID *string, timeout time.Duration) {
-	c.channel.Request(&receiver.StopRequest{
+func (c *ReceiverController) StopApplication(sessionID *string, timeout time.Duration) (*api.CastMessage, error) {
+	return c.channel.Request(&receiver.StopRequest{
 		PayloadHeaders: primitives.PayloadHeaders{Type: receiverControllerSystemEventStop},
 		SessionID:      sessionID,
 	}, timeout)

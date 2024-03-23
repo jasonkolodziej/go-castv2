@@ -244,12 +244,16 @@ func (device *Device) Play() {
 // PlayMedia plays a video via the media controller.
 func (device *Device) PlayMedia(URL, MIMEType, MediaStreamType string) {
 	appID := configs.MediaReceiverAppID
-	device.ReceiverController.LaunchApplication(&appID, defaultTimeout, false)
+	response, err := device.ReceiverController.LaunchApplication(&appID, defaultTimeout, false)
+	if err != nil {
+		z.Err(err).Msg("Device.PlayMedia:LaunchApplication")
+	}
+	z.Debug().Any("recieverController.LaunchApplication", response).Msg("Device.PlayMedia:")
 	m, err := device.MediaController.Load(URL, MIMEType, MediaStreamType, defaultTimeout)
 	if err != nil {
 		z.Err(err).Msg("Device.PlayMedia:")
 	}
-	z.Info().Any("castMessage", m).Msg("Device.PlayMedia:")
+	z.Debug().Any("castMessage", m).Msg("Device.PlayMedia:")
 
 }
 
