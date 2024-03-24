@@ -2,11 +2,13 @@ package virtual
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net"
+	"net/http"
 	"os"
 	"os/exec"
 	"strings"
@@ -38,6 +40,8 @@ type VirtualDevice struct {
 	Cancel         context.CancelFunc
 	virtualhostAdr net.Addr
 	sps, ffmpeg    *exec.Cmd
+	connectionPool *ConnectionPool
+	contentType    *string
 }
 
 // * curl -s -o /dev/null -w "%{http_code}" -X POST http://127.0.0.1:5123/devices/<deviceId>/connect
@@ -47,7 +51,8 @@ func NewVirtualDevice(d *castv2.Device, ctx context.Context) *VirtualDevice {
 	if d != nil {
 		v = &VirtualDevice{d,
 			nil, nil,
-			ctx, func() { v.teardown() }, nil, nil, nil}
+			ctx, func() { v.teardown() },
+			nil, nil, nil, NewConnectionPool(), nil}
 		// v.content <- nil
 		// v.rawContent <- nil
 	}
@@ -244,92 +249,6 @@ func (v *VirtualDevice) DisconnectDeviceHandler() fiber.Handler {
 	}
 }
 
-func (v *VirtualDevice) SpawnCmdWithContext(ctx context.Context, configPath string) error {
-	var err error
-	if configPath == "" {
-		configPath = "/etc/shairport-syncKitchenSpeaker.conf"
-	}
-	sp := exec.CommandContext(ctx, "shairport-sync", "-c", configPath)
-	spOut, err := sp.StdoutPipe() // * assign ffmpeg stdin to sps stdout
-	if err != nil {
-		z.Err(err).Msg("error: shairport-sync StdoutPipe()")
-		sp.Cancel()
-		return err
-	}
-	errno, err := sp.StderrPipe()
-	if err != nil {
-		z.Err(err).Msg("error: shairport-sync StderrPipe()")
-		sp.Cancel()
-		return err
-	}
-	out := make(chan io.ReadCloser)
-	go MonitorOutput(spOut, out)
-	go WriteStdErrnoToLog(errno)
-	f := exec.CommandContext(
-		ctx,
-		txc,
-		ffmpegArgs...,
-	)
-	errno, err = f.StderrPipe()
-	if err != nil {
-		z.Err(err).Msg("error: ffmpeg StderrPipe()")
-		sp.Cancel()
-		f.Cancel()
-		return err
-	}
-	go WriteStdErrnoToLog(errno)
-	output, err := f.StdoutPipe()
-	if err != nil {
-		z.Err(err).Msg("error: ffmpeg StdoutPipe()")
-		sp.Cancel()
-		f.Cancel()
-		return err
-	}
-	// ch := make(chan io.ReadCloser) // * bi-directional channel
-	// ch <- output                   // * send output through the bi-directional channel
-	// v.Content(ch)                  // * pass ch as a recieve-only channel
-	v.content = output
-	err = sp.Start()
-	if err != nil {
-		z.Err(err).Msg("error: ffmpeg Start()")
-		sp.Cancel()
-		f.Cancel()
-		return err
-	}
-	err = f.Start()
-	if err != nil {
-		z.Err(err).Msg("error: ffmpeg Start()")
-		sp.Cancel()
-		f.Cancel()
-		return err
-	}
-	sp.Wait()
-	f.Wait()
-	<-ctx.Done()
-	return nil
-}
-
-// MonitorOutput sends an io.ReadCloser through out, send-only channel
-func MonitorOutput(content io.ReadCloser, out chan<- io.ReadCloser) {
-	defer close(out)
-	scanner := bufio.NewScanner(content)
-	scanner.Split(bufio.ScanBytes)
-	// io.TeeReader(content, bufio.NewWriter(nil))
-	for scanner.Scan() {
-		out <- content
-	}
-	out <- nil
-}
-
-func MonitorInput(in <-chan io.ReadCloser, stdIn io.Reader) {
-	for ch := range in {
-		if ch == nil {
-			return
-		}
-		stdIn = ch
-	}
-}
-
 // func Stream(ctx context.Context, out chan<- Value) error {
 //     for {
 //         v, err := DoSomething(ctx)
@@ -343,6 +262,38 @@ func MonitorInput(in <-chan io.ReadCloser, stdIn io.Reader) {
 //         }
 //     }
 // }
+
+func (v *VirtualDevice) HandleStream() fiber.Handler {
+	go GetStreamFromReader(v.connectionPool, v.content)
+	z.Info().Msg("virtual.HandleStream has started")
+	return func(ctx *fiber.Ctx) error {
+		w := ctx.Response().BodyWriter() // Writer
+		ctx.Response().Header.Add(fiber.HeaderContentType, *v.contentType)
+		ctx.Response().Header.Add(fiber.HeaderConnection, fiber.HeaderKeepAlive)
+		flusher, ok := w.(http.Flusher)
+		bw := bufio.NewWriter(w)
+		if !ok {
+			z.Error().Msg("Could not create flusher")
+		}
+		connection := NewConnection()
+		v.connectionPool.AddConnection(connection)
+		z.Info().Msgf("%s has connected to the audio stream\n", ctx.Request().Host())
+		for {
+			buf := <-connection.BufferCh()
+			if err := ctx.SendStream(bytes.NewReader(buf)); err != nil {
+				v.connectionPool.DeleteConnection(connection)
+				z.Err(err).Msgf("%s's connection to the audio stream has been closed\n", ctx.Request().Host())
+				return err
+			}
+			if !ok {
+				bw.Flush()
+			} else {
+				flusher.Flush()
+			}
+			connection.ClearBuffer() // * clear(connection.buffer)
+		}
+	}
+}
 
 func (v *VirtualDevice) FiberDeviceHandlerWithStream() fiber.Handler {
 	// defer v.content.Close()

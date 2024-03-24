@@ -2,6 +2,7 @@ package tests
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -14,6 +15,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/template/html/v2"
@@ -96,8 +98,8 @@ func Test_PlayWav(t *testing.T) {
 	localIp := net.ParseIP("192.168.2.14:5123")
 	K := virtual.NewVirtualDevice(&kitchen, context.Background())
 	K.VirtualHostAddr(&net.IPAddr{IP: localIp, Zone: ""}, "", "")
-	// K.QuitApplication(time.Second * 20)
-	K.PlayMedia("https://www2.cs.uic.edu/~i101/SoundFiles/PinkPanther30.wav", "audio/wav", "LIVE")
+	K.QuitApplication(time.Second * 20)
+	// K.PlayMedia("https://ice.lqorg.com/music/stream", "audio/aac", "LIVE")
 	t.Log("done")
 
 }
@@ -333,16 +335,13 @@ func OtherStreamer(contentType string) func(ctx *fiber.Ctx) error {
 	pwd, _ := os.Getwd()
 	output, err := os.Open(pwd + "/data/temp.flac")
 	if err != nil {
-
 		z.Fatal().Err(err)
-
 	}
 	ctn, err := io.ReadAll(output)
 	if err != nil {
 		z.Warn().Err(err).Msg("OtherStreamer")
 	}
 	connPool := virtual.NewConnectionPool()
-
 	go virtual.GetStream(connPool, ctn)
 	z.Info().Msg("virtual.Stream has started")
 	return func(ctx *fiber.Ctx) error {
@@ -354,29 +353,28 @@ func OtherStreamer(contentType string) func(ctx *fiber.Ctx) error {
 		if !ok {
 			z.Error().Msg("Could not create flusher")
 		}
-
 		connection := virtual.NewConnection()
 		connPool.AddConnection(connection)
 		z.Info().Msgf("%s has connected to the audio stream\n", ctx.Request().Host())
 		for {
-
 			buf := <-connection.BufferCh()
-			if _, err := bw.Write(buf); err != nil {
-
+			if err := ctx.SendStream(bytes.NewReader(buf)); err != nil {
 				connPool.DeleteConnection(connection)
 				z.Err(err).Msgf("%s's connection to the audio stream has been closed\n", ctx.Request().Host())
 				return err
-
 			}
+			// if _, err := bw.Write(buf); err != nil {
+			// 	connPool.DeleteConnection(connection)
+			// 	z.Err(err).Msgf("%s's connection to the audio stream has been closed\n", ctx.Request().Host())
+			// 	return err
+			// }
 			if !ok {
 				bw.Flush()
 			} else {
 				flusher.Flush()
 			}
 			connection.ClearBuffer() // * clear(connection.buffer)
-
 		}
-		return nil
 	}
 }
 

@@ -169,10 +169,6 @@ func GetStream(connectionPool *ConnectionPool, content io.Reader) {
 	buffer := make([]byte, BUFFERSIZE)
 
 	for {
-		// for ch := range content {
-		// 	if ch == nil {
-		// 		return
-		// 	}
 		// clear() is a new builtin function introduced in go 1.21. Just reinitialize the buffer if on a lower version.
 		clear(buffer)
 		tempfile := bufio.NewReader(content) // bytes.NewReader(content)
@@ -193,8 +189,6 @@ func GetStream(connectionPool *ConnectionPool, content io.Reader) {
 
 		}
 	}
-
-	// }
 
 }
 
@@ -223,6 +217,8 @@ func ReadFromStdIn(ctn chan<- *[]byte, r io.Reader) {
 		}
 	}
 }
+
+// ! ffmpeg -y -re -fflags nobuffer -f s16le -ac 2 -ar 44100 -i pipe:0 -f adts pipe:
 
 func main() {
 	log.Println("Starting Stream SERVER...")

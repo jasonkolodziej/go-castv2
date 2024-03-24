@@ -3,6 +3,7 @@ package virtual
 // ? https://medium.com/@icelain/a-guide-to-building-a-realtime-http-audio-streaming-server-in-go-24e78cf1aa2c
 // ? https://ice.lqorg.com/blog/realtime-http-audio-streaming-server-in-go
 import (
+	"bufio"
 	"bytes"
 	"io"
 	"log"
@@ -98,6 +99,36 @@ func GetStream(connectionPool *ConnectionPool, content []byte) {
 		// clear() is a new builtin function introduced in go 1.21. Just reinitialize the buffer if on a lower version.
 		clear(buffer)
 		tempfile := bytes.NewReader(content)
+		ticker := time.NewTicker(time.Millisecond * DELAY)
+
+		for range ticker.C {
+
+			_, err := tempfile.Read(buffer)
+
+			if err == io.EOF {
+
+				ticker.Stop()
+				break
+
+			}
+
+			connectionPool.Broadcast(buffer)
+
+		}
+
+	}
+
+}
+
+func GetStreamFromReader(connectionPool *ConnectionPool, content io.ReadCloser) {
+	defer content.Close()
+	buffer := make([]byte, BUFFERSIZE)
+
+	for {
+
+		// clear() is a new builtin function introduced in go 1.21. Just reinitialize the buffer if on a lower version.
+		clear(buffer)
+		tempfile := bufio.NewReader(content)
 		ticker := time.NewTicker(time.Millisecond * DELAY)
 
 		for range ticker.C {
