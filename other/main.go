@@ -78,7 +78,7 @@ package main
 // ? https://medium.com/@icelain/a-guide-to-building-a-realtime-http-audio-streaming-server-in-go-24e78cf1aa2c
 // ? https://ice.lqorg.com/blog/realtime-http-audio-streaming-server-in-go
 import (
-	"bytes"
+	"bufio"
 	"io"
 	"log"
 	"net/http"
@@ -164,25 +164,19 @@ func NewConnectionPool() *ConnectionPool {
 
 }
 
-func GetStream(connectionPool *ConnectionPool, content <-chan []byte) {
+func GetStream(connectionPool *ConnectionPool, content io.Reader) {
 
 	buffer := make([]byte, BUFFERSIZE)
-	// useage := bufio.NewWriter()
-	for {
 
+	for {
+		// for ch := range content {
+		// 	if ch == nil {
+		// 		return
+		// 	}
 		// clear() is a new builtin function introduced in go 1.21. Just reinitialize the buffer if on a lower version.
 		clear(buffer)
-		var tempfile *bytes.Reader
-		var ticker *time.Ticker
-		// c := <-content
-		// if len(c) != 0 && c != nil {
-		// 	useage.Write(c)
-		// }
-
-		tempfile = bytes.NewReader(<-content)
-		ticker = time.NewTicker(time.Millisecond * time.Duration(tempfile.Len()))
-
-		// }
+		tempfile := bufio.NewReader(content) // bytes.NewReader(content)
+		ticker := time.NewTicker(time.Millisecond * DELAY)
 
 		for range ticker.C {
 
@@ -200,13 +194,14 @@ func GetStream(connectionPool *ConnectionPool, content <-chan []byte) {
 		}
 	}
 
+	// }
+
 }
 
-func ReadFromStdIn(ctn chan<- []byte, r io.Reader) {
+func ReadFromStdIn(ctn chan<- *[]byte, r io.Reader) {
 	// func ReadAll(r Reader) ([]byte, error) {
-	// if len(b) == 0 || b == nil {
 	b := make([]byte, 0, 512)
-
+	ctn <- &b
 	for {
 		n, err := r.Read(b[len(b):cap(b)])
 		b = b[:len(b)+n]
@@ -220,15 +215,13 @@ func ReadFromStdIn(ctn chan<- []byte, r io.Reader) {
 			}
 			break
 		}
-		ctn <- b // Send before adjusting -- should we rest?
+		// Send before adjusting -- should we rest?
 		if len(b) == cap(b) {
 			log.Println("ReadFromStdIn: adjusting capacity")
 			// Add more capacity (let append pick how much).
 			b = append(b, 0)[:len(b)]
 		}
 	}
-	ctn <- b
-
 }
 
 func main() {
@@ -241,7 +234,7 @@ func main() {
 	// 	log.Fatal(err)
 
 	// }
-	var ctn = make(chan []byte)
+	// var ctn = make(chan *[]byte)
 	// var ctn []byte
 	// var err error
 	// check if there is somethinig to read on STDIN
@@ -254,14 +247,14 @@ func main() {
 		// for scanner.Scan() {
 		// 	ctn = append(ctn, scanner.Bytes()...)
 		// }
-		go ReadFromStdIn(ctn, os.Stdin)
+		// go ReadFromStdIn(ctn, os.Stdin)
 	} else {
 		log.Fatal("Nothing to read from StdIN")
 	}
 
 	connPool := NewConnectionPool()
 
-	go GetStream(connPool, ctn)
+	go GetStream(connPool, os.Stdin)
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 
