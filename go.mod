@@ -31,6 +31,7 @@ require (
 )
 
 require (
+	github.com/Roverr/hotstreak v1.1.0
 	github.com/andybalholm/brotli v1.1.0 // indirect
 	github.com/go-audio/riff v1.0.0 // indirect
 	github.com/gofiber/fiber/v2 v2.52.2
@@ -42,6 +43,7 @@ require (
 	github.com/mattn/go-runewidth v0.0.15 // indirect
 	github.com/mewkiz/pkg v0.0.0-20230226050401-4010bf0fec14 // indirect
 	github.com/miekg/dns v1.1.58 // indirect
+	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasthttp v1.52.0 // indirect
