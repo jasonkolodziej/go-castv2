@@ -3,6 +3,7 @@ package parse
 import (
 	"bufio"
 	"bytes"
+	"fmt"
 	"io"
 	"os"
 	"slices"
@@ -147,10 +148,14 @@ func LoadFile(wd, filename string) (f *os.File, size int64, err error) {
 }
 
 func ParseFile(filename string, parser ParserFunc) (sections Sections, err error) {
-	f, _, err := LoadFile("", filename)
+	f, _, err := LoadFile(string(filename[0]), string(filename[1:]))
 	if err != nil {
 		return
 	}
+	return ParseOpenedFile(f, parser)
+}
+
+func ParseOpenedFile(f *os.File, parser ParserFunc) (sections Sections, err error) {
 	defer f.Close()
 	reader, err := io.ReadAll(f)
 	if err != nil {
@@ -174,6 +179,33 @@ func WriteOut(sections Sections, wd, newFilename string) error {
 		_, err := section.WriteTo(f)
 		if err != nil {
 			return err
+		}
+	}
+	return nil
+}
+
+func (ss *Sections) UpdateValueAt(keyNamePath string, value any) error {
+	keyNames := strings.Split(keyNamePath, ".")
+	for _, section := range *ss {
+		if section.Name != keyNames[0] {
+			continue
+		} // * section was found
+		valOk := section.KeyValues.Get(keyNames[1])
+		if valOk != nil {
+			if err := valOk.SetValue(value); err != nil {
+				return fmt.Errorf("error: UpdateValueAt cannot update %s with %v", keyNamePath, value)
+			}
+			valOk.SetUncommented()
+			return nil
+		}
+	}
+	return fmt.Errorf("error: UpdateValueAt key %s not found", keyNamePath)
+}
+
+func (k *KeyValues) Get(kvName string) *KeyValue {
+	for _, v := range *k {
+		if v.KeyName == kvName {
+			return &v
 		}
 	}
 	return nil

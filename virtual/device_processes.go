@@ -4,6 +4,10 @@ import (
 	"bufio"
 	"io"
 	"os/exec"
+	"strings"
+
+	"github.com/jasonkolodziej/go-castv2/sps"
+	"github.com/jasonkolodziej/go-castv2/sps/parse"
 )
 
 var defaultConfPath = func(zoneName string) string {
@@ -71,6 +75,7 @@ func (v *VirtualDevice) Virtualize() error {
 	var err error
 	// * Start SPS
 	// n := strings.ReplaceAll(v.ZoneName(), " ", "") // * default device configuration file
+	v.ZoneName()
 	n := "/etc/shairport-syncKitchenSpeaker.conf"
 	v.sps = exec.CommandContext(
 		v.ctx,
@@ -144,4 +149,52 @@ func WriteStdErrnoToLog(errno io.ReadCloser) {
 	for scanner.Scan() {
 		z.Warn().Msg(scanner.Text())
 	}
+}
+
+func (v *VirtualDevice) checkForConfigFile() {
+	f, _, err := parse.LoadFile("", "shairport-sync"+v.ZoneName()+".conf")
+	if err == nil {
+		f.Close() // * file exists
+		return
+	}
+	// * Create a new config
+	f, _, err = sps.OpenOriginalConfig()
+	if err != nil {
+		z.Fatal().AnErr("checkForConfigFile", err).Msg("attempting to create a new config")
+	}
+	kvTempl := parse.KeyValue{}
+	kvTempl.SetDelimiters("=", ";", "/ ")
+	sections, err := parse.ParseOpenedFile(f, func() (kvTemplate *parse.KeyValue,
+		sectionStartDel string, sectionNameDel string, endSectionDel string) {
+		return &kvTempl,
+			"{", " =", "};"
+	})
+	if err != nil {
+		z.Fatal().AnErr("checkForConfigFile", err).Msg("parsing error")
+	}
+	if err = sections.UpdateValueAt("general.output_backend", "stdout"); err != nil {
+		z.Fatal().AnErr("checkForConfigFile", err).Msg("editing error")
+	}
+	if err = sections.UpdateValueAt("general.port", 8009); err != nil {
+		z.Fatal().AnErr("checkForConfigFile", err).Msg("editing error")
+	}
+	_, name := v.Info.AirplayDeviceName()
+	if err = sections.UpdateValueAt("general.name", name); err != nil {
+		z.Fatal().AnErr("checkForConfigFile", err).Msg("editing error")
+	}
+	_, id := v.Info.AirplayDeviceId()
+	ids := "0x" + strings.ToUpper(strings.ReplaceAll(id.String(), ":", "")) + "L"
+	if err = sections.UpdateValueAt("general.airplay_device_id", ids); err != nil {
+		z.Fatal().AnErr("checkForConfigFile", err).Msg("editing error")
+	}
+	// TODO: Lines UDP ports? `udp_port_base` ! states only for airplay 1
+	// TODO: Lines for handling session control
+	// ! run_this_before_play_begins, run_this_after_play_ends,
+	// ! run_this_before_entering_active_state, run_this_after_exiting_active_state
+	// TODO: Lines for handling volume up/down
+	//	run_this_when_volume_is_set = "/full/path/to/application/and/args";
+	//	Run the specified application whenever the volume control is set or changed.
+	//		The desired AirPlay volume is appended to the end of the command line –
+	// 		leave a space if you want it treated as an extra argument.
+	//		AirPlay volume goes from 0.0 to -30.0 and -144.0 means "mute".
 }

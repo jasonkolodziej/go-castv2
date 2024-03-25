@@ -29,6 +29,7 @@ type Device struct {
 	YoutubeController    *controllers.YoutubeController
 	svcRecord            *mdns.ServiceEntry //? svcRecord is a pointer to the mDNS Service Entry of the Chromecast Device
 	Info                 *DeviceInfo        //? Info extracts information from svcRecord to be Used in DeviceInfo struct
+	currentStatus        *media.MediaStatus
 }
 
 func (x *Device) Equal(y Device) bool {
@@ -89,6 +90,7 @@ func NewDevice(record *mdns.ServiceEntry, s *scanner.Scanner) (Device, error) {
 	device.MediaController = controllers.NewMediaController(client, defaultChromecastSenderID, device.ReceiverController)
 
 	device.YoutubeController = controllers.NewYoutubeController(client, defaultChromecastSenderID, device.ReceiverController)
+	device.GetMediaStatus(defaultTimeout)
 	return device, nil
 }
 
@@ -145,6 +147,7 @@ func (device *Device) GetMediaStatus(timeout time.Duration) []*media.MediaStatus
 		emptyStatus := make([]*media.MediaStatus, 0)
 		return emptyStatus
 	}
+	device.currentStatus = response[0]
 	return response
 }
 
@@ -155,4 +158,31 @@ func (device *Device) GetStatus(timeout time.Duration) *receiver.ReceiverStatus 
 		return nil
 	}
 	return response
+}
+
+func (device *Device) GetVolume(timeout time.Duration) *receiver.Volume {
+	if device.currentStatus != nil {
+		return (*receiver.Volume)(device.currentStatus.Volume)
+	} else {
+		device.GetMediaStatus(time.Second * 5)
+	}
+	if device.currentStatus != nil {
+		return (*receiver.Volume)(device.currentStatus.Volume)
+	}
+	response, err := device.ReceiverController.GetVolume(time.Second * 5)
+	if err != nil {
+		return nil
+	}
+	return response
+}
+
+func (device *Device) SetVolume(level float64, muted bool, timeout time.Duration) {
+	_, err := device.ReceiverController.SetVolume(
+		&receiver.Volume{Level: &level, Muted: &muted},
+		time.Second*5)
+	if err != nil {
+		z.Warn().AnErr("SetVolume", err).Msg("Device")
+		return
+	}
+	device.currentStatus.Volume = &media.Volume{Level: &level, Muted: &muted}
 }

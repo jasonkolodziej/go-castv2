@@ -10,7 +10,7 @@ type Sections []*Section
 
 type Section struct {
 	Name        string
-	KeyValues   []KeyValue
+	KeyValues   KeyValues
 	Description []string
 	// use for internal purposes
 	rawContent    *string

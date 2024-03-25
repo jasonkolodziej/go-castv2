@@ -8,6 +8,7 @@ import (
 	"strings"
 )
 
+type KeyValues []KeyValue
 type KeyValue struct {
 	parent           *Section
 	KeyName          string
@@ -126,6 +127,13 @@ func CreateKvs(allLines []string, kvIdx []int, parent *Section) []KeyValue {
 
 func (kv *KeyValue) Type() reflect.Kind {
 	return kv.valueType
+}
+
+func (kv *KeyValue) SetCommented() {
+	kv.isCommented = true
+}
+func (kv *KeyValue) SetUncommented() {
+	kv.isCommented = false
 }
 
 func (k *KeyValue) WriteTo(w io.Writer) (int64, error) {

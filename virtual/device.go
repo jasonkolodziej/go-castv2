@@ -34,12 +34,15 @@ type VirtualDevice struct {
 
 func NewVirtualDevice(d *castv2.Device, ctx context.Context) *VirtualDevice {
 	var v *VirtualDevice
-	if d != nil {
-		v = &VirtualDevice{d,
-			nil, nil,
-			ctx, func() { v.teardown() },
-			nil, nil, nil, NewConnectionPool(), nil}
+	if d == nil {
+		return nil
 	}
+	v = &VirtualDevice{d,
+		nil, nil,
+		ctx, func() { v.teardown() },
+		nil, nil, nil, NewConnectionPool(), nil}
+	// Check for sps device conf
+	v.checkForConfigFile()
 	return v
 }
 

@@ -79,6 +79,27 @@ func (v *VirtualDevice) PauseDeviceHandler() fiber.Handler {
 	}
 }
 
+func (v *VirtualDevice) VolumeHandler() fiber.Handler {
+	z.Debug().Msg("VolumeHandler")
+	return func(c *fiber.Ctx) error {
+		if c.Params("deviceId") == v.Info.Id.String() &&
+			strings.Contains(c.Path(), "volume") {
+			// TODO: Handle changing volume of device
+			switch c.Method() {
+			case fiber.MethodGet:
+				return c.JSON(v.GetVolume(time.Second * 5))
+			case fiber.MethodPost:
+			case fiber.MethodPatch:
+			case fiber.MethodPut:
+				z.Info().Any("providedBody", string(c.Request().Body()))
+				return c.SendStatus(200)
+			}
+			return c.SendStatus(200)
+		}
+		return c.Next()
+	}
+}
+
 func (v *VirtualDevice) HandleStream() fiber.Handler {
 	go GetStreamFromReader(v.connectionPool, v.content)
 	z.Info().Msg("virtual.HandleStream has started")

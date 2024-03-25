@@ -6,7 +6,6 @@ require (
 	dario.cat/mergo v1.0.0
 	github.com/davecgh/go-spew v1.1.1
 	github.com/fatih/structs v1.1.0
-	github.com/gitteamer/libconfig v1.0.0
 	github.com/go-audio/audio v1.0.0
 	github.com/go-audio/chunk v0.0.0-20180402231512-6dd119599a6a
 	github.com/go-audio/wav v1.1.0
@@ -18,16 +17,18 @@ require (
 	github.com/imroc/req v0.3.2
 	github.com/mewkiz/flac v1.0.10
 	github.com/pkg/errors v0.9.1
-	github.com/reugn/go-streams v0.10.0
 	github.com/rs/zerolog v1.32.0
 	github.com/sirupsen/logrus v1.9.3
 
 )
 
 require (
+	github.com/BurntSushi/toml v1.3.2 // indirect
 	github.com/gofiber/template v1.8.3 // indirect
 	github.com/gofiber/utils v1.1.0 // indirect
 	github.com/stretchr/testify v1.9.0 // indirect
+	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
+	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
 
 require (

@@ -1,20 +1,10 @@
 package sps
 
 import (
-	"log"
+	"os"
 
-	"github.com/gitteamer/libconfig"
+	"github.com/jasonkolodziej/go-castv2/sps/parse"
 )
-
-var p libconfig.Parser
-
-func FileParser(optFilepath string) *libconfig.Value {
-	v, err := p.ParseFile(optFilepath)
-	if err != nil {
-		log.Fatal(err)
-	}
-	return v
-}
 
 var DefaultConfPath = func(zoneName string) string {
 	return "/etc/shairport-sync" + zoneName + ".conf"
@@ -22,4 +12,8 @@ var DefaultConfPath = func(zoneName string) string {
 
 var DefaultSystemDServicePath = func(zoneName string) string {
 	return "/etc/shairport-sync" + zoneName + ".conf"
+}
+
+func OpenOriginalConfig() (f *os.File, size int64, err error) {
+	return parse.LoadFile("/etc", "/shairport-sync.conf")
 }
