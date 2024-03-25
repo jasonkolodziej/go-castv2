@@ -1,16 +1,12 @@
 package castv2
 
 import (
-	"fmt"
-	"net"
 	"os"
 	"reflect"
-	"strings"
 
 	// "text/scanner"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/hashicorp/mdns"
 	"github.com/jasonkolodziej/go-castv2/configs"
 	"github.com/jasonkolodziej/go-castv2/controllers"
@@ -19,15 +15,6 @@ import (
 	"github.com/jasonkolodziej/go-castv2/primitives"
 	"github.com/jasonkolodziej/go-castv2/scanner"
 	"github.com/rs/zerolog"
-)
-
-const defaultTimeout = time.Second * 10
-
-type Port = int
-
-const (
-	CHROMECAST       Port = 8009
-	CHROMECAST_GROUP Port = 32187
 )
 
 var z = zerolog.New(os.Stdout).With().Timestamp().Caller().Logger()
@@ -44,89 +31,12 @@ type Device struct {
 	Info                 *DeviceInfo        //? Info extracts information from svcRecord to be Used in DeviceInfo struct
 }
 
-/** DeviceInfo struct
- * test
- */
-type DeviceInfo struct {
-	Id        uuid.UUID
-	Cd        uuid.UUID
-	hwAddr    *net.HardwareAddr //? MAC Address (used for Airplay 2) "airplay_device_id"
-	Md        string            //? Device type / Manufacturer
-	Fn        string            //? Friendly device name
-	other     map[string]string
-	port      *Port //? Port number opened for the chromecast service
-	IpAddress *net.IP
-	// id=UUID cd=UUID rm= ve=05 md=Google Home ic=/setup/icon.png fn=Kitchen speaker ca=199172 st=0 bs=??? nf=1 rs=
-}
-
 func (x *Device) Equal(y Device) bool {
 	return reflect.DeepEqual(*x.Info, y.Info)
 }
 
 func (x *Device) Resembles(y DeviceInfo) bool {
-	return x.Info.Md == y.Md ||
-		(x.Info.port == y.port || (x.Info.IpAddress) == (y.IpAddress)) ||
-		x.Info.hwAddr == y.hwAddr ||
-		x.Info.Fn == y.Fn
-}
-
-func Equal[DeviceInfo comparable](x, y DeviceInfo) bool {
-	return reflect.DeepEqual(x, y)
-}
-
-func (i *DeviceInfo) IsGroup() bool {
-	return strings.Contains(i.Md, "Google Cast Group") && (*i.port == CHROMECAST_GROUP)
-}
-
-func (i *DeviceInfo) SetPort(p int) {
-	i.port = &p
-}
-
-func (i *DeviceInfo) IsTv() (bool, string) {
-	return strings.Contains(strings.ToLower(i.Fn), "tv"), i.Md
-}
-
-func (i *DeviceInfo) AirplayDeviceId() (key string, hwid net.HardwareAddr) {
-	return "airplay_device_id", i.MAC()
-}
-
-func (i *DeviceInfo) MAC() net.HardwareAddr {
-	return *i.hwAddr
-}
-
-func (i *DeviceInfo) AirplayDeviceName() (key string, val string) {
-	return "name", i.Fn
-}
-
-func (i *DeviceInfo) IPAddress() string {
-	return i.IpAddress.String()
-}
-
-/*
-discoverLocalInterfaces
-
-	disovers interfaces used by the device executing this function
-*/
-func discoverLocalInterfaces() []net.Interface {
-	var ret []net.Interface
-	netFaces, err := net.Interfaces()
-	if err != nil {
-		panic(err)
-	}
-	for _, face := range netFaces {
-		addrs, err := face.Addrs()
-		if err != nil {
-			panic(err)
-		}
-		for _, addr := range addrs {
-			ipNet, ok := addr.(*net.IPNet)
-			if ok && !ipNet.IP.IsLoopback() && ipNet.IP.To4() != nil {
-				fmt.Println(ipNet.IP)
-				ret = append(ret, face)
-			}
-		}
-	}
-	return ret
+	return x.Info.Resembles(y)
 }
 
 //    0.000032000 "shairport.c:2401" daemon status is 0.
@@ -148,29 +58,6 @@ func discoverLocalInterfaces() []net.Interface {
 // 0.000025846 "shairport.c:2415" run_this_before_entering_active_state action is  "(null)".
 // 0.000026000 "shairport.c:2417" run_this_after_exiting_active_state action is  "(null)".
 // 0.000025385 "shairport.c:2419" active_state_timeout is  10.000000 seconds.
-
-func FromServiceEntryInfo(info []string, svcRecord *mdns.ServiceEntry, mac *net.HardwareAddr) *DeviceInfo {
-	var d DeviceInfo
-	d.hwAddr = mac
-	d.other = make(map[string]string)
-	if svcRecord != nil {
-		d.port = &svcRecord.Port
-		d.IpAddress = &svcRecord.Addr
-	}
-	if info != nil {
-		for _, item := range info {
-			kv := strings.Split(item, "=")
-			d.other[kv[0]] = kv[1]
-		}
-		d.Id = uuid.MustParse(d.other["id"])
-		d.Cd = uuid.MustParse(d.other["cd"])
-		d.Md = d.other["md"]
-		d.Fn = d.other["fn"]
-	}
-
-	// mac, err := net.ParseMAC(d.other["bs"])
-	return &d
-}
 
 // NewDevice is constructor for Device struct
 // host net.IP, port int,
@@ -205,40 +92,15 @@ func NewDevice(record *mdns.ServiceEntry, s *scanner.Scanner) (Device, error) {
 	return device, nil
 }
 
-func NewDeviceFromDeviceInfo(info *DeviceInfo) (Device, error) {
-	var device Device
-
-	client, err := primitives.NewClient(*info.IpAddress, *info.port)
-	if err != nil {
-		return device, err
-	}
-	device.client = client
-	device.Info = info
-
-	// entries := make(chan *mdns.ServiceEntry, 5)
-	// go lookupChromecastMDNSEntries(entries, time.Second*5)
-
-	// for e := range entries {
-
-	// }
-
-	device.heartbeatController = controllers.NewHeartbeatController(client, defaultChromecastSenderID, defaultChromecastReceiverID)
-	device.heartbeatController.Start()
-
-	device.connectionController = controllers.NewConnectionController(client, defaultChromecastSenderID, defaultChromecastReceiverID)
-	device.connectionController.Connect()
-
-	device.ReceiverController = controllers.NewReceiverController(client, defaultChromecastSenderID, defaultChromecastReceiverID)
-
-	device.MediaController = controllers.NewMediaController(client, defaultChromecastSenderID, device.ReceiverController)
-
-	device.YoutubeController = controllers.NewYoutubeController(client, defaultChromecastSenderID, device.ReceiverController)
-	return device, nil
+// Play just plays.
+func (device *Device) Pause() {
+	device.MediaController.Pause(defaultTimeout)
+	// device.Info.paused = true
 }
 
-// Play just plays.
 func (device *Device) Play() {
 	device.MediaController.Play(defaultTimeout)
+	// device.Info.paused = false
 }
 
 // PlayMedia plays a video via the media controller.

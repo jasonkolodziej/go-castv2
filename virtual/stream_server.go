@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"sync"
@@ -23,6 +24,7 @@ const (
 type Connection struct {
 	bufferChannel chan []byte
 	buffer        []byte
+	Id            *net.IP
 }
 
 type ConnectionPool struct {
@@ -39,9 +41,33 @@ func (cp *ConnectionPool) AddConnection(connection *Connection) {
 
 }
 
-func NewConnection() *Connection {
-	return &Connection{bufferChannel: make(chan []byte), buffer: make([]byte, BUFFERSIZE)}
+func (cp *ConnectionPool) HasConnection(connection *Connection) bool {
 
+	defer cp.mu.Unlock()
+	cp.mu.Lock()
+
+	_, ok := cp.ConnectionMap[connection]
+	return ok
+}
+
+func (cp *ConnectionPool) HasConnectionWithId(netIp net.IP) *Connection {
+
+	defer cp.mu.Unlock()
+	cp.mu.Lock()
+	for c := range cp.ConnectionMap {
+		if c.Id == &netIp {
+			return c
+		}
+	}
+	return nil
+}
+
+func NewConnectionWithId(connId net.IP) *Connection {
+	return &Connection{bufferChannel: make(chan []byte), buffer: make([]byte, BUFFERSIZE), Id: &connId}
+}
+
+func NewConnection() *Connection {
+	return &Connection{bufferChannel: make(chan []byte), buffer: make([]byte, BUFFERSIZE), Id: nil}
 }
 
 func (c *Connection) BufferCh() <-chan []byte {
@@ -49,7 +75,25 @@ func (c *Connection) BufferCh() <-chan []byte {
 
 }
 
+func (c *Connection) StreamWriter(connPool *ConnectionPool) func(w *bufio.Writer) {
+	return func(w *bufio.Writer) {
+		for {
+			buf := <-c.BufferCh()
+			if _, err := w.Write(buf); err != nil {
+				connPool.DeleteConnection(c)
+				z.Info().Err(err).Msgf("connection to the audio stream has been closed\n")
+				return
+			}
+			if err := w.Flush(); err != nil {
+				z.Warn().Err(err).Msg("calling writer.Flush")
+			}
+			c.ClearBuffer()
+		}
+	}
+}
+
 func (c *Connection) ClearBuffer() {
+	// z.Info().Msgf("Clearing Connection.Buffer")
 	clear(c.buffer)
 }
 
