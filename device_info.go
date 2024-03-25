@@ -25,14 +25,14 @@ const (
  * test
  */
 type DeviceInfo struct {
-	Id        uuid.UUID
-	Cd        uuid.UUID
+	Id        uuid.UUID         `json:"Id"`
+	Cd        uuid.UUID         `json:"Cd"`
 	hwAddr    *net.HardwareAddr //? MAC Address (used for Airplay 2) "airplay_device_id"
-	Md        string            //? Device type / Manufacturer
-	Fn        string            //? Friendly device name
+	Md        string            `json:"Md"` //? Device type / Manufacturer
+	Fn        string            `json:"Fn"` //? Friendly device name
 	other     map[string]string
-	port      *Port //? Port number opened for the chromecast service
-	IpAddress *net.IP
+	port      *Port   //? Port number opened for the chromecast service
+	IpAddress *net.IP `json:"IpAddress"`
 	// id=UUID cd=UUID rm= ve=05 md=Google Home ic=/setup/icon.png fn=Kitchen speaker ca=199172 st=0 bs=??? nf=1 rs=
 	paused bool
 }
