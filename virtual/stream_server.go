@@ -140,6 +140,8 @@ func GetStreamFromReader(connectionPool *ConnectionPool, content io.ReadCloser) 
 				ticker.Stop()
 				break
 
+			} else if err != nil {
+				z.Err(err).Msg("GetStreamFromReader")
 			}
 
 			connectionPool.Broadcast(buffer)
