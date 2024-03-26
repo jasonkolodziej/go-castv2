@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"time"
 
+	"github.com/gofiber/fiber/v2"
 	"github.com/jasonkolodziej/go-castv2"
 	"github.com/jasonkolodziej/go-castv2/sps"
 	"github.com/rs/zerolog"
@@ -42,8 +43,18 @@ func NewVirtualDevice(d *castv2.Device, ctx context.Context) *VirtualDevice {
 		ctx, func() { v.teardown() },
 		nil, nil, nil, NewConnectionPool(), nil}
 	// Check for sps device conf
-	v.checkForConfigFile()
+	// v.checkForConfigFile()
 	return v
+}
+
+func (v *VirtualDevice) Handlers() []fiber.Handler {
+	return []fiber.Handler{
+		v.ConnectDeviceHandler(),
+		v.DisconnectDeviceHandler(),
+		v.HandleStream(),
+		v.PauseDeviceHandler(),
+		v.VolumeHandler(),
+	}
 }
 
 func (v *VirtualDevice) teardown() error {

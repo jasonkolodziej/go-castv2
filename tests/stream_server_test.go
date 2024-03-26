@@ -2,9 +2,13 @@ package tests
 
 import (
 	"bufio"
+	"context"
+	"net"
 	"testing"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/google/uuid"
+	cast "github.com/jasonkolodziej/go-castv2"
 	"github.com/jasonkolodziej/go-castv2/virtual"
 )
 
@@ -56,4 +60,43 @@ func Test_SendStream(t *testing.T) {
 	})
 
 	fib.Listen(":8080")
+}
+
+func Test_VirtualDeviceHandlers(t *testing.T) {
+	// * Fiber router setup
+	devices := fib.Group("/devices")
+
+	// ! Working
+	ip := net.ParseIP("192.168.2.152")
+	mac, err := net.ParseMAC("f4:f5:d8:be:cd:ec")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var findKitchen = cast.FromServiceEntryInfo(nil, nil, &mac)
+	findKitchen.Fn = "Kitchen speaker"
+	findKitchen.Id = uuid.MustParse("a548ff5a-d1fa-c194-1101-acb5a1204788")
+	findKitchen.IpAddress = &ip
+	findKitchen.SetPort(cast.CHROMECAST)
+	kitchen, err := cast.NewDeviceFromDeviceInfo(findKitchen)
+	if err != nil {
+		t.Fatal(err)
+	}
+	localIp := net.ParseIP("192.168.2.14:5123")
+	K := virtual.NewVirtualDevice(&kitchen, context.Background())
+
+	err = K.Virtualize()
+	if err != nil {
+		t.Fatal(err)
+	}
+	devices.Get("/:deviceId", K.Handlers()...)
+	K.VirtualHostAddr(&net.IPAddr{IP: localIp, Zone: ""}, "", "")
+	K.PlayMedia("http://192.168.2.14:5123/stream", "audio/flac", "BUFFERED")
+	z.Info().Msg("startingserver has started")
+	err = fib.Listen(":5123")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// t.Log("done")
+
+	// t.Cleanup(K.Cancel)
 }
