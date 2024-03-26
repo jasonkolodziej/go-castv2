@@ -90,6 +90,15 @@ import (
 
 var z = zerolog.New(os.Stderr).Level(0).With().Timestamp().Logger()
 
+var fib = fiber.New(fiber.Config{
+	Prefork:       true,
+	CaseSensitive: true,
+	StrictRouting: true,
+	ServerHeader:  "Fiber",
+	AppName:       "Test App v1.0.1",
+	GETOnly:       true,
+})
+
 func ReadFromStdIn(ctn chan<- *[]byte, r io.Reader) {
 	// func ReadAll(r Reader) ([]byte, error) {
 	b := make([]byte, 0, 512)
@@ -205,41 +214,33 @@ ffmpeg -y -re -fflags nobuffer -f s16le -ac 2 -ar 44100 -i pipe:0 -bits_per_raw_
 // }
 
 func main() {
+	connPool := virtual.NewConnectionPool()
+	// * File - WORKS
+	// f, err := os.Open("./hlsTest/output.aac")
+	// if err != nil {
+	// 	z.Fatal().AnErr("os.Open", err)
+	// 	panic(err)
+	// }
+	// defer f.Close()
 
-	// * File
-	f, err := os.Open("./hlsTest/output.aac")
-	if err != nil {
-		z.Fatal().AnErr("os.Open", err)
-		panic(err)
-	}
-	defer f.Close()
 	// stat, err := os.Stdin.Stat()
 	// if (stat.Mode() & os.ModeCharDevice) == 0 {
 	// 	log.Println("STDIN Ready, scanning...")
-	// 	// scanner := bufio.NewScanner(os.Stdin)
-	// 	// scanner.Split(bufio.ScanBytes)
-	// 	// for scanner.Scan() {
-	// 	// 	ctn = append(ctn, scanner.Bytes()...)
-	// 	// }
-	// 	// go ReadFromStdIn(ctn, os.Stdin)
+	// 	// defer os.Stdin.Close()
+
+	// 	// 	// scanner := bufio.NewScanner(os.Stdin)
+	// 	// 	// scanner.Split(bufio.ScanBytes)
+	// 	// 	// for scanner.Scan() {
+	// 	// 	// 	ctn = append(ctn, scanner.Bytes()...)
+	// 	// 	// }
+	// 	// 	// go ReadFromStdIn(ctn, os.Stdin)
 	// } else if err != nil {
 	// 	log.Fatalln(err)
 	// } else {
 	// 	log.Fatal("Nothing to read from StdIN")
 	// }
-	// stats, _ := f.Stat()
-	// z.Info().Any("FileStats", stats).Send()
-	connPool := virtual.NewConnectionPool()
-	go virtual.GetStreamFromReader(connPool, f)
-	var fib = fiber.New(fiber.Config{
-		Prefork:       true,
-		CaseSensitive: true,
-		StrictRouting: true,
-		ServerHeader:  "Fiber",
-		AppName:       "Test App v1.0.1",
-		// GETOnly:       true,
-	})
-
+	defer os.Stdin.Close()
+	go virtual.GetStreamFromReader(connPool, os.Stdin)
 	fib.Get("/stream", func(c *fiber.Ctx) error {
 		// z.Info().Any("CtxId", c.Context().ID()).Send()
 		// z.Info().Any("headers", c.Context().Request.String()).Send()
@@ -265,7 +266,6 @@ func main() {
 				}
 				if err := w.Flush(); err != nil {
 					z.Warn().Err(err).Msg("calling writer.Flush")
-					return
 				}
 				connection.ClearBuffer()
 			}
@@ -273,6 +273,6 @@ func main() {
 		return nil
 	})
 
-	z.Fatal().Err(fib.Listen(":5040"))
+	z.Fatal().Err(fib.Listen(":8080"))
 
 }
