@@ -3,6 +3,7 @@ package tests
 import (
 	"bufio"
 	"context"
+	"fmt"
 	"net"
 	"testing"
 
@@ -13,7 +14,7 @@ import (
 )
 
 var fib = fiber.New(fiber.Config{
-	Prefork:       true,
+	// Prefork:       true,
 	CaseSensitive: true,
 	StrictRouting: true,
 	ServerHeader:  "Fiber",
@@ -64,7 +65,7 @@ func Test_SendStream(t *testing.T) { // * Good function
 
 func Test_VirtualDeviceHandlers(t *testing.T) {
 	// * Fiber router setup
-	// devices := fib.Group("/devices")
+	devices := fib.Group("/devices")
 
 	// ! Working
 	ip := net.ParseIP("192.168.2.152")
@@ -82,20 +83,25 @@ func Test_VirtualDeviceHandlers(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// localIp := net.ParseIP("192.168.2.14:5123")
-	K := virtual.NewVirtualDevice(&kitchen, context.Background())
-	if err = K.Virtualize(); err != nil {
-		t.Fatal(err)
+	var K *virtual.VirtualDevice = virtual.NewVirtualDevice(&kitchen, context.Background())
+	if !fiber.IsChild() {
+		fmt.Println("I'm the parent process")
+		if err = K.Virtualize(); err != nil {
+			t.Fatal(err)
+		}
+		devices.Get("/:deviceId/*", K.Handlers()...)
+		// K.VirtualHostAddr(&net.IPAddr{IP: localIp, Zone: ""}, "", "")
+		// K.PlayMedia("http://192.168.2.14:5123/stream", "audio/flac", "BUFFERED")
+		z.Info().Msg("startingserver has started")
 	}
-	// go K.StartStream()
-	fib.Get("/devices/:deviceId/*", K.Handlers()...)
-	// K.VirtualHostAddr(&net.IPAddr{IP: localIp, Zone: ""}, "", "")
-	// K.PlayMedia("http://192.168.2.14:5123/stream", "audio/flac", "BUFFERED")
-	z.Info().Msg("startingserver has started")
 	err = fib.Listen(":5123")
 	if err != nil {
 		t.Fatal(err)
 	}
+	// go K.StartStream()
+
+	// localIp := net.ParseIP("192.168.2.14:5123")
+
 	// t.Log("done")
 
 	// t.Cleanup(K.Cancel)

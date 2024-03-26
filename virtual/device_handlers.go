@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -32,8 +33,21 @@ func (v *VirtualDevice) Handlers() []fiber.Handler {
 	}
 }
 
+func (v *VirtualDevice) Router(api fiber.Router) {
+	r := api.Get("/:deviceId", v.DefaultHandler())
+	r.Get("/connect", v.ConnectDeviceHandler())
+	r.Get("/disconnect", v.DisconnectDeviceHandler())
+	r.Get("/stream", v.HandleStream())
+	r.Get("/pause", v.PauseDeviceHandler())
+	r.Post("/volume", v.VolumeHandler())
+}
+
 func (v *VirtualDevice) DefaultHandler() fiber.Handler {
-	z.Debug().Msg("DefaultHandler")
+	if !fiber.IsChild() {
+		z.Debug().Msg("DefaultHandler: parent")
+	} else {
+		z.Debug().Msgf("DefaultHandler: child pid: %d", os.Getpid())
+	}
 	return func(c *fiber.Ctx) error {
 		if c.Params("deviceId") != v.Info.Id.String() {
 			return c.Next()

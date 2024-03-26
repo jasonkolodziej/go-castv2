@@ -28,6 +28,7 @@ type VirtualDevice struct {
 	sps, ffmpeg    *exec.Cmd
 	connectionPool *ConnectionPool
 	contentType    *string
+	// f              *fiber.App
 	// mu             sync.Mutex
 }
 
@@ -55,6 +56,7 @@ func NewVirtualDevice(d *castv2.Device, ctx context.Context) *VirtualDevice {
 		ffmpeg:         nil,
 		connectionPool: NewConnectionPool(),
 		contentType:    &contentType,
+		// f:              fiber.New(),
 		// mu:             sync.Mutex{},
 	}
 	// Check for sps device conf
