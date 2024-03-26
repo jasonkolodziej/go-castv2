@@ -131,13 +131,15 @@ func (v *VirtualDevice) StartTranscoder() error {
 		v.ffmpeg.Cancel()
 		return err
 	}
+	// v.content <- out
+
 	return v.ffmpeg.Start()
 }
 
 func (v *VirtualDevice) StopTranscoder() error {
 	// ? https://stackoverflow.com/questions/69954944/capture-stdout-from-exec-command-line-by-line-and-also-pipe-to-os-stdout
 	// rc := <-v.content        // * Get the io.ReadCloser
-	defer v.content.Close()  // * defer closing
+	// defer v.content.Close()  // * defer closing
 	_ = v.ffmpeg.Wait()      // * wait until full disconnect
 	return v.ffmpeg.Cancel() // * call cancel then defer
 }

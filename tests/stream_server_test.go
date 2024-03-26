@@ -26,7 +26,7 @@ func Test_SendStream(t *testing.T) {
 	defer ctn.Close()
 	connPool := virtual.NewConnectionPool()
 
-	go virtual.GetStreamFromReader(connPool, ctn)
+	// go virtual.GetStreamFromReader(connPool, ctn)
 	fib.Get("/", func(c *fiber.Ctx) error {
 		// z.Info().Any("CtxId", c.Context().ID()).Send()
 		// z.Info().Any("headers", c.Context().Request.String()).Send()
@@ -74,6 +74,7 @@ func Test_VirtualDeviceHandlers(t *testing.T) {
 	}
 	var findKitchen = cast.FromServiceEntryInfo(nil, nil, &mac)
 	findKitchen.Fn = "Kitchen speaker"
+	// http://192.168.2.14:5123/devices/a548ff5a-d1fa-c194-1101-acb5a1204788/stream
 	findKitchen.Id = uuid.MustParse("a548ff5a-d1fa-c194-1101-acb5a1204788")
 	findKitchen.IpAddress = &ip
 	findKitchen.SetPort(cast.CHROMECAST)
@@ -81,16 +82,21 @@ func Test_VirtualDeviceHandlers(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	localIp := net.ParseIP("192.168.2.14:5123")
+	// localIp := net.ParseIP("192.168.2.14:5123")
 	K := virtual.NewVirtualDevice(&kitchen, context.Background())
 
 	err = K.Virtualize()
 	if err != nil {
 		t.Fatal(err)
 	}
-	devices.Get("/:deviceId", K.Handlers()...)
-	K.VirtualHostAddr(&net.IPAddr{IP: localIp, Zone: ""}, "", "")
-	K.PlayMedia("http://192.168.2.14:5123/stream", "audio/flac", "BUFFERED")
+	err = K.StartTranscoder()
+	if err != nil {
+		t.Fatal(err)
+	}
+	// go K.StartStream()
+	devices.Get("/:deviceId/*", K.Handlers()...)
+	// K.VirtualHostAddr(&net.IPAddr{IP: localIp, Zone: ""}, "", "")
+	// K.PlayMedia("http://192.168.2.14:5123/stream", "audio/flac", "BUFFERED")
 	z.Info().Msg("startingserver has started")
 	err = fib.Listen(":5123")
 	if err != nil {

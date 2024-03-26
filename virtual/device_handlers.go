@@ -19,17 +19,42 @@ func PrintStack(app *fiber.App) {
 	fmt.Println(string(data))
 	// z.Info().Msg(string(data))
 }
+func (v *VirtualDevice) Handlers() []fiber.Handler {
+	return []fiber.Handler{
+		v.DefaultHandler(),
+		v.ConnectDeviceHandler(),
+		v.DisconnectDeviceHandler(),
+		v.HandleStream(),
+		v.PauseDeviceHandler(),
+		v.VolumeHandler(),
+	}
+}
+
+func (v *VirtualDevice) DefaultHandler() fiber.Handler {
+	z.Debug().Msg("DefaultHandler")
+	return func(c *fiber.Ctx) error {
+		if c.Params("deviceId") != v.Info.Id.String() {
+			return c.Next()
+		}
+		switch c.Params("*") {
+		case "", "/":
+			z.Debug().Msg("case empty")
+			return c.SendString("hello " + v.Info.Fn)
+		default:
+			return c.Next()
+		}
+	}
+}
 
 func (v *VirtualDevice) ConnectDeviceHandler() fiber.Handler {
 	z.Debug().Msg("ConnectDeviceHandler")
 	return func(c *fiber.Ctx) error {
-		z.Debug().Msg("ConnectDeviceHandler")
 		if c.Params("deviceId") == v.Info.Id.String() &&
 			strings.Contains(c.Path(), "connect") {
 			// TODO: ffmpeg and Chromecast application
-			err := v.StartTranscoder()
-			if err != nil {
-				z.Err(err).Msg("error: StartTranscoder()")
+			// err := v.StartTranscoder()
+			if v.content == nil {
+				z.Debug().AnErr("ConnectDeviceHandler", fmt.Errorf("content deemed of nil Type")).Msg("error: StartTranscoder()")
 				//data, _ := json.MarshalIndent(err, "", "  ")
 				return c.SendStatus(500)
 			}
@@ -101,8 +126,8 @@ func (v *VirtualDevice) VolumeHandler() fiber.Handler {
 }
 
 func (v *VirtualDevice) HandleStream() fiber.Handler {
+	z.Info().Msg("HandleStream")
 	go GetStreamFromReader(v.connectionPool, v.content)
-	z.Info().Msg("virtual.HandleStream has started")
 	return func(ctx *fiber.Ctx) error {
 		if ctx.Params("deviceId") != v.Info.Id.String() && // * does the path not contain v.Info.Id
 			!strings.Contains(ctx.Path(), "stream") { // * does the path not contain `stream`

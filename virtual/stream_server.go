@@ -56,6 +56,7 @@ func (cp *ConnectionPool) HasConnectionWithId(netIp net.IP) *Connection {
 	cp.mu.Lock()
 	for c := range cp.ConnectionMap {
 		if c.Id == &netIp {
+			z.Debug().Any("HasConnectionWithId", netIp).Msg("a matching connection was found")
 			return c
 		}
 	}
@@ -118,7 +119,7 @@ func (cp *ConnectionPool) Broadcast(buffer []byte) {
 		select {
 
 		case connection.bufferChannel <- connection.buffer:
-
+			z.Debug().Any("ConnectionPool.Broadcast", "broadcasted buffer")
 		default:
 
 		}
@@ -150,10 +151,12 @@ func GetStream(connectionPool *ConnectionPool, content []byte) {
 			_, err := tempfile.Read(buffer)
 
 			if err == io.EOF {
-
+				z.Debug().AnErr("GetStream", err)
 				ticker.Stop()
 				break
 
+			} else if err != nil {
+				z.Debug().AnErr("GetStream", err)
 			}
 
 			connectionPool.Broadcast(buffer)
@@ -169,15 +172,15 @@ func GetStreamFromReader(connectionPool *ConnectionPool, content io.ReadCloser) 
 	buffer := make([]byte, BUFFERSIZE)
 
 	for {
-
 		// clear() is a new builtin function introduced in go 1.21. Just reinitialize the buffer if on a lower version.
 		clear(buffer)
-		tempfile := bufio.NewReader(content)
+		tempfile := bufio.NewReader((content))
 		ticker := time.NewTicker(time.Millisecond * DELAY)
 
 		for range ticker.C {
 
-			_, err := tempfile.Read(buffer)
+			n, err := tempfile.Read(buffer)
+			z.Debug().Msgf("Read %d bytes", n)
 
 			if err == io.EOF {
 

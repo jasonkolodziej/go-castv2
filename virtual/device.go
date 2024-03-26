@@ -9,7 +9,6 @@ import (
 	"os/exec"
 	"time"
 
-	"github.com/gofiber/fiber/v2"
 	"github.com/jasonkolodziej/go-castv2"
 	"github.com/jasonkolodziej/go-castv2/sps"
 	"github.com/rs/zerolog"
@@ -35,26 +34,20 @@ type VirtualDevice struct {
 
 func NewVirtualDevice(d *castv2.Device, ctx context.Context) *VirtualDevice {
 	var v *VirtualDevice
+	var contentType = "audio/aac"
 	if d == nil {
 		return nil
+	}
+	if ctx == nil {
+		ctx = context.TODO()
 	}
 	v = &VirtualDevice{d,
 		nil, nil,
 		ctx, func() { v.teardown() },
-		nil, nil, nil, NewConnectionPool(), nil}
+		nil, nil, nil, NewConnectionPool(), &contentType}
 	// Check for sps device conf
 	// v.checkForConfigFile()
 	return v
-}
-
-func (v *VirtualDevice) Handlers() []fiber.Handler {
-	return []fiber.Handler{
-		v.ConnectDeviceHandler(),
-		v.DisconnectDeviceHandler(),
-		v.HandleStream(),
-		v.PauseDeviceHandler(),
-		v.VolumeHandler(),
-	}
 }
 
 func (v *VirtualDevice) teardown() error {
@@ -71,6 +64,10 @@ func (v *VirtualDevice) teardown() error {
 func (v *VirtualDevice) ZoneName() string {
 	_, n := v.Device.Info.AirplayDeviceName()
 	return n
+}
+
+func (v *VirtualDevice) StartStream() {
+	GetStreamFromReader(v.connectionPool, v.content)
 }
 
 func (v *VirtualDevice) VirtualHostAddr(netAddr net.Addr, hostname, port string) {
