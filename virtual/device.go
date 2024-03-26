@@ -28,6 +28,7 @@ type VirtualDevice struct {
 	sps, ffmpeg    *exec.Cmd
 	connectionPool *ConnectionPool
 	contentType    *string
+	// mu             sync.Mutex
 }
 
 // * curl -s -o /dev/null -w "%{http_code}" -X POST http://127.0.0.1:5123/devices/<deviceId>/connect
@@ -41,13 +42,23 @@ func NewVirtualDevice(d *castv2.Device, ctx context.Context) *VirtualDevice {
 	if ctx == nil {
 		ctx = context.TODO()
 	}
-	v = &VirtualDevice{d,
-		nil, nil,
-		ctx, func() { v.teardown() },
-		nil, nil, nil, NewConnectionPool(), &contentType}
+	return &VirtualDevice{
+		Device:     d,
+		content:    nil,
+		rawContent: nil,
+		ctx:        ctx,
+		Cancel: func() {
+			v.teardown()
+		},
+		virtualhostAdr: nil,
+		sps:            nil,
+		ffmpeg:         nil,
+		connectionPool: NewConnectionPool(),
+		contentType:    &contentType,
+		// mu:             sync.Mutex{},
+	}
 	// Check for sps device conf
 	// v.checkForConfigFile()
-	return v
 }
 
 func (v *VirtualDevice) teardown() error {
@@ -62,12 +73,31 @@ func (v *VirtualDevice) teardown() error {
 }
 
 func (v *VirtualDevice) ZoneName() string {
+	// defer v.mu.Unlock()
+	// v.mu.Lock()
 	_, n := v.Device.Info.AirplayDeviceName()
 	return n
 }
 
 func (v *VirtualDevice) StartStream() {
+	// defer v.mu.Unlock()
+	// v.mu.Lock()
 	GetStreamFromReader(v.connectionPool, v.content)
+}
+
+func (v *VirtualDevice) StartAndGoWait() {
+	// defer v.mu.Unlock()
+	// v.mu.Lock()
+	if err := v.Virtualize(); err != nil {
+		z.Error().AnErr("StartAndGoWait", err).Msg("trying to Virtualize")
+		return
+	}
+	// if err := v.StartTranscoder(); err != nil {
+	// 	z.Error().AnErr("StartAndGoWait", err).Msg("trying to StartTranscoder")
+	// 	return
+	// }
+	// go v.sps.Wait()
+	// go v.ffmpeg.Wait()
 }
 
 func (v *VirtualDevice) VirtualHostAddr(netAddr net.Addr, hostname, port string) {
@@ -89,6 +119,8 @@ func (v *VirtualDevice) Content(rcvRc <-chan io.ReadCloser) {
 }
 
 func (v *VirtualDevice) ConnectDeviceToVirtualStream() error {
+	// defer v.mu.Unlock()
+	// v.mu.Lock()
 	if v == nil || v.virtualhostAdr == nil { // * basic sanity check
 		return fmt.Errorf("device not created")
 	}

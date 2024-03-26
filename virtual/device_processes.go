@@ -72,11 +72,16 @@ var ffmpegArgs = []string{
 }
 
 func (v *VirtualDevice) Virtualize() error {
+	// defer v.mu.Unlock()
+	// v.mu.Lock()
 	var err error
 	// * Start SPS
 	// n := strings.ReplaceAll(v.ZoneName(), " ", "") // * default device configuration file
 	v.ZoneName()
 	n := "/etc/shairport-syncKitchenSpeaker.conf"
+	if v.sps != nil { // prevent from being spawned multiple times
+		return nil
+	}
 	v.sps = exec.CommandContext(
 		v.ctx,
 		"shairport-sync",
@@ -103,7 +108,13 @@ func (v *VirtualDevice) Virtualize() error {
 }
 
 func (v *VirtualDevice) StartTranscoder() error {
+	// defer v.mu.Unlock()
+	// v.mu.Lock()
 	var err error
+	if v.ffmpeg != nil {
+		z.Warn().Any("StartTranscoder", "ffmpeg already running").Msg("skipping")
+		return nil
+	}
 	if v.sps == nil {
 		z.Err(err).Msg("error: VirtualDevice.sps *exec.Cmd was lost")
 		return err
@@ -137,6 +148,8 @@ func (v *VirtualDevice) StartTranscoder() error {
 }
 
 func (v *VirtualDevice) StopTranscoder() error {
+	// defer v.mu.Unlock()
+	// v.mu.Lock()
 	// ? https://stackoverflow.com/questions/69954944/capture-stdout-from-exec-command-line-by-line-and-also-pipe-to-os-stdout
 	// rc := <-v.content        // * Get the io.ReadCloser
 	// defer v.content.Close()  // * defer closing
@@ -154,6 +167,8 @@ func WriteStdErrnoToLog(errno io.ReadCloser) {
 }
 
 func (v *VirtualDevice) checkForConfigFile() {
+	// defer v.mu.Unlock()
+	// v.mu.Lock()
 	f, _, err := parse.LoadFile("", "shairport-sync"+v.ZoneName()+".conf")
 	if err == nil {
 		f.Close() // * file exists

@@ -239,7 +239,7 @@ func main() {
 	// } else {
 	// 	log.Fatal("Nothing to read from StdIN")
 	// }
-	defer os.Stdin.Close()
+
 	go virtual.GetStreamFromReader(connPool, os.Stdin)
 	fib.Get("/stream", func(c *fiber.Ctx) error {
 		// z.Info().Any("CtxId", c.Context().ID()).Send()

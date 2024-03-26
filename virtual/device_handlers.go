@@ -11,6 +11,8 @@ import (
 )
 
 func (v *VirtualDevice) pathString() string {
+	// defer v.mu.Unlock()
+	// v.mu.Lock()
 	return "/devices/" + v.Info.Id.String() + "/stream"
 }
 
@@ -51,15 +53,21 @@ func (v *VirtualDevice) ConnectDeviceHandler() fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		if c.Params("deviceId") == v.Info.Id.String() &&
 			strings.Contains(c.Path(), "connect") {
+			z.Info().Msgf("%s has called connect", c.Context().RemoteIP())
 			// TODO: ffmpeg and Chromecast application
-			// err := v.StartTranscoder()
+			if err := v.StartTranscoder(); err != nil {
+				z.Error().AnErr("ConnectDeviceHandler", err).Msg("StartTranscoder")
+			}
 			if v.content == nil {
 				z.Debug().AnErr("ConnectDeviceHandler", fmt.Errorf("content deemed of nil Type")).Msg("error: StartTranscoder()")
 				//data, _ := json.MarshalIndent(err, "", "  ")
 				return c.SendStatus(500)
 			}
-			v.ConnectDeviceToVirtualStream()
-			return c.SendString("connecting")
+			if v.connectionPool.Empty() { // * if this is the first time /connect was called
+				go GetStreamFromReader(v.connectionPool, v.content)
+			}
+			// v.ConnectDeviceToVirtualStream() // * Inform the google chromecast to play
+			return c.SendString("connecting... /stream should be avail.")
 		}
 		return c.Next()
 	}
@@ -91,7 +99,7 @@ func (v *VirtualDevice) DisconnectDeviceHandler() fiber.Handler {
 }
 
 func (v *VirtualDevice) PauseDeviceHandler() fiber.Handler {
-	z.Debug().Msg("DisonnectDeviceHandler")
+	z.Debug().Msg("PauseDeviceHandler")
 	return func(c *fiber.Ctx) error {
 		if c.Params("deviceId") == v.Info.Id.String() &&
 			strings.Contains(c.Path(), "pause") {
@@ -127,7 +135,7 @@ func (v *VirtualDevice) VolumeHandler() fiber.Handler {
 
 func (v *VirtualDevice) HandleStream() fiber.Handler {
 	z.Info().Msg("HandleStream")
-	go GetStreamFromReader(v.connectionPool, v.content)
+	//// go GetStreamFromReader(v.connectionPool, v.content)
 	return func(ctx *fiber.Ctx) error {
 		if ctx.Params("deviceId") != v.Info.Id.String() && // * does the path not contain v.Info.Id
 			!strings.Contains(ctx.Path(), "stream") { // * does the path not contain `stream`

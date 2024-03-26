@@ -50,6 +50,14 @@ func (cp *ConnectionPool) HasConnection(connection *Connection) bool {
 	return ok
 }
 
+func (cp *ConnectionPool) Empty() bool {
+
+	defer cp.mu.Unlock()
+	cp.mu.Lock()
+	return len(cp.ConnectionMap) == 0
+
+}
+
 func (cp *ConnectionPool) HasConnectionWithId(netIp net.IP) *Connection {
 
 	defer cp.mu.Unlock()
@@ -188,6 +196,7 @@ func GetStreamFromReader(connectionPool *ConnectionPool, content io.ReadCloser) 
 
 			} else if err != nil {
 				z.Err(err).Msg("GetStreamFromReader")
+				break
 			}
 
 			connectionPool.Broadcast(buffer)

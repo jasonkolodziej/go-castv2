@@ -64,7 +64,7 @@ func Test_SendStream(t *testing.T) { // * Good function
 
 func Test_VirtualDeviceHandlers(t *testing.T) {
 	// * Fiber router setup
-	devices := fib.Group("/devices")
+	// devices := fib.Group("/devices")
 
 	// ! Working
 	ip := net.ParseIP("192.168.2.152")
@@ -84,17 +84,11 @@ func Test_VirtualDeviceHandlers(t *testing.T) {
 	}
 	// localIp := net.ParseIP("192.168.2.14:5123")
 	K := virtual.NewVirtualDevice(&kitchen, context.Background())
-
-	err = K.Virtualize()
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = K.StartTranscoder()
-	if err != nil {
+	if err = K.Virtualize(); err != nil {
 		t.Fatal(err)
 	}
 	// go K.StartStream()
-	devices.Get("/:deviceId/*", K.Handlers()...)
+	fib.Get("/devices/:deviceId/*", K.Handlers()...)
 	// K.VirtualHostAddr(&net.IPAddr{IP: localIp, Zone: ""}, "", "")
 	// K.PlayMedia("http://192.168.2.14:5123/stream", "audio/flac", "BUFFERED")
 	z.Info().Msg("startingserver has started")
