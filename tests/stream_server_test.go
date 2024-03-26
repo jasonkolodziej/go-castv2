@@ -59,7 +59,7 @@ func Test_SendStream(t *testing.T) { // * Good function
 		return nil
 	})
 
-	z.Error().Err(fib.Listen(":8080"))
+	z.Fatal().Err(fib.Listen(":8080"))
 }
 
 func Test_VirtualDeviceHandlers(t *testing.T) {
