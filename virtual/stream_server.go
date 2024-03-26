@@ -127,7 +127,7 @@ func (cp *ConnectionPool) Broadcast(buffer []byte) {
 		select {
 
 		case connection.bufferChannel <- connection.buffer:
-			z.Debug().Any("ConnectionPool.Broadcast", "broadcasted buffer")
+			z.Debug().Any("ConnectionPool.Broadcast", "broadcasted buffer").Send()
 		default:
 
 		}
@@ -190,7 +190,7 @@ func GetStreamFromReader(connectionPool *ConnectionPool, content io.ReadCloser) 
 			// z.Debug().Msgf("Read %d bytes", n)
 
 			if err == io.EOF {
-
+				// z.Err(err).Msg("GetStreamFromReader")
 				ticker.Stop()
 				break
 

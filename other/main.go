@@ -214,15 +214,26 @@ ffmpeg -y -re -fflags nobuffer -f s16le -ac 2 -ar 44100 -i pipe:0 -bits_per_raw_
 // }
 
 func main() {
-	connPool := virtual.NewConnectionPool()
 	// * File - WORKS
-	// f, err := os.Open("./hlsTest/output.aac")
-	// if err != nil {
-	// 	z.Fatal().AnErr("os.Open", err)
-	// 	panic(err)
+	f, err := os.Open("./movFlags.aac")
+	if err != nil {
+		z.Fatal().AnErr("os.Open", err)
+		panic(err)
+	}
+	defer f.Close()
+	testStruct := struct {
+		content  io.ReadCloser
+		connPool *virtual.ConnectionPool
+	}{
+		content:  f,
+		connPool: virtual.NewConnectionPool(),
+	}
+	// if !fiber.IsChild() {
+	// ctn, _ := loadTestFile(t, "output.aac", false)
+	// defer ctn.Close()
+	go virtual.GetStreamFromReader(testStruct.connPool, testStruct.content)
 	// }
-	// defer f.Close()
-
+	connPool := testStruct.connPool
 	// stat, err := os.Stdin.Stat()
 	// if (stat.Mode() & os.ModeCharDevice) == 0 {
 	// 	log.Println("STDIN Ready, scanning...")
@@ -240,7 +251,7 @@ func main() {
 	// 	log.Fatal("Nothing to read from StdIN")
 	// }
 
-	go virtual.GetStreamFromReader(connPool, os.Stdin)
+	// go virtual.GetStreamFromReader(connPool, os.Stdin)
 	fib.Get("/stream", func(c *fiber.Ctx) error {
 		// z.Info().Any("CtxId", c.Context().ID()).Send()
 		// z.Info().Any("headers", c.Context().Request.String()).Send()

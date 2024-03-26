@@ -67,8 +67,9 @@ var ffmpegArgs = []string{
 	"-ac", "2", // * audio channels, chromecasts don't support more than two audio channels
 	// "-f", "mp4", // * fmt force format
 	"-bits_per_raw_sample", "8",
+	"-movflags", "frag_keyframe+empty_moov", //? https://github.com/fluent-ffmpeg/node-fluent-ffmpeg/issues/967#issuecomment-888843722
 	"-f", "adts",
-	"pipe:1", // * output to pipe (stdout->)
+	"pipe:1", // * output to pipe (stdout->) //TODO: this will need to be a file with mov flags
 }
 
 func (v *VirtualDevice) Virtualize() error {

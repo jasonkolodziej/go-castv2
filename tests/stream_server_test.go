@@ -4,7 +4,9 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"io"
 	"net"
+	"os"
 	"testing"
 
 	"github.com/gofiber/fiber/v2"
@@ -23,11 +25,28 @@ var fib = fiber.New(fiber.Config{
 })
 
 func Test_SendStream(t *testing.T) { // * Good function
-	ctn, _ := loadTestFile(t, "output.aac", false)
-	defer ctn.Close()
-	connPool := virtual.NewConnectionPool()
+	testStruct := struct {
+		content  io.ReadCloser
+		connPool *virtual.ConnectionPool
+	}{
+		content:  nil,
+		connPool: virtual.NewConnectionPool(),
+	}
+	if fInfo, err := os.Stdin.Stat(); err != nil {
+		fmt.Println("Stdin not available:", err)
+	} else {
+		fmt.Printf("Stdin available. %v", fInfo.Mode())
+	}
+	if !fiber.IsChild() {
+		// ctn, _ := loadTestFile(t, "output.aac", false)
+		// defer ctn.Close()
+		go virtual.GetStreamFromReader(testStruct.connPool, os.Stdin)
+	}
+	connPool := testStruct.connPool
+	// defer ctn.Close()
+	// connPool := virtual.NewConnectionPool()
 
-	go virtual.GetStreamFromReader(connPool, ctn)
+	// go virtual.GetStreamFromReader(connPool, ctn)
 	fib.Get("/stream", func(c *fiber.Ctx) error {
 		// z.Info().Any("CtxId", c.Context().ID()).Send()
 		// z.Info().Any("headers", c.Context().Request.String()).Send()
