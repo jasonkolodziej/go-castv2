@@ -178,8 +178,8 @@ func GetStreamFromReader(connectionPool *ConnectionPool, content io.ReadCloser) 
 
 		for range ticker.C {
 
-			n, err := tempfile.Read(buffer)
-			z.Debug().Msgf("Read %d bytes", n)
+			_, err := tempfile.Read(buffer)
+			// z.Debug().Msgf("Read %d bytes", n)
 
 			if err == io.EOF {
 

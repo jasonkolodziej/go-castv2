@@ -81,143 +81,14 @@ import (
 	"bufio"
 	"io"
 	"log"
-	"net"
 	"os"
-	"sync"
-	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/jasonkolodziej/go-castv2/virtual"
 	"github.com/rs/zerolog"
 )
 
 var z = zerolog.New(os.Stderr).Level(0).With().Timestamp().Logger()
-
-const (
-	BUFFERSIZE = 8192
-
-	//formula for delay = track_duration * buffer_size / aac_file_size
-	DELAY = 150
-)
-
-type Connection struct {
-	bufferChannel chan []byte
-	buffer        []byte
-	Id            *net.IP
-}
-
-type ConnectionPool struct {
-	ConnectionMap map[*Connection]struct{}
-	mu            sync.Mutex
-}
-
-func (cp *ConnectionPool) AddConnection(connection *Connection) {
-
-	defer cp.mu.Unlock()
-	cp.mu.Lock()
-
-	cp.ConnectionMap[connection] = struct{}{}
-
-}
-
-func (cp *ConnectionPool) HasConnectionWithId(netIp net.IP) *Connection {
-
-	defer cp.mu.Unlock()
-	cp.mu.Lock()
-	for c := range cp.ConnectionMap {
-		if c.Id == &netIp {
-			z.Debug().Any("HasConnectionWithId", netIp).Msg("a matching connection was found")
-			return c
-		}
-	}
-	return nil
-}
-
-func NewConnectionWithId(connId net.IP) *Connection {
-	return &Connection{bufferChannel: make(chan []byte), buffer: make([]byte, BUFFERSIZE), Id: &connId}
-}
-
-func NewConnection() *Connection {
-	return &Connection{bufferChannel: make(chan []byte), buffer: make([]byte, BUFFERSIZE)}
-
-}
-
-func (c *Connection) BufferCh() <-chan []byte {
-	return c.bufferChannel
-
-}
-
-func (c *Connection) ClearBuffer() {
-	clear(c.buffer)
-}
-
-func (cp *ConnectionPool) DeleteConnection(connection *Connection) {
-
-	defer cp.mu.Unlock()
-	cp.mu.Lock()
-
-	delete(cp.ConnectionMap, connection)
-
-}
-
-func (cp *ConnectionPool) Broadcast(buffer []byte) {
-
-	defer cp.mu.Unlock()
-	cp.mu.Lock()
-
-	for connection := range cp.ConnectionMap {
-
-		copy(connection.buffer, buffer)
-
-		select {
-
-		case connection.bufferChannel <- connection.buffer:
-			z.Debug().Any("ConnectionPool.Broadcast", "broadcasted buffer").Send()
-		default:
-
-		}
-
-	}
-
-}
-
-func NewConnectionPool() *ConnectionPool {
-
-	connectionMap := make(map[*Connection]struct{})
-	return &ConnectionPool{ConnectionMap: connectionMap}
-
-}
-
-func GetStream(connectionPool *ConnectionPool, content io.ReadCloser) {
-	// defer content.Close()
-	buffer := make([]byte, BUFFERSIZE)
-	z.Debug().Any("GetStream", "buffer created").Send()
-	for {
-		// clear() is a new builtin function introduced in go 1.21. Just reinitialize the buffer if on a lower version.
-		clear(buffer)
-		tempfile := bufio.NewReader(content) // bytes.NewReader(content)
-		ticker := time.NewTicker(time.Millisecond * DELAY)
-
-		for range ticker.C {
-
-			_, err := tempfile.Read(buffer)
-
-			if err == io.EOF {
-				z.Debug().AnErr("GetStream", err).Send()
-				ticker.Stop()
-				break
-
-			} else if err != nil {
-				z.Debug().AnErr("GetStream", err).Send()
-			} else {
-				// z.Debug().Any("GetStream", n).Msg("bytes read")
-			}
-
-			connectionPool.Broadcast(buffer)
-
-		}
-	}
-
-}
 
 func ReadFromStdIn(ctn chan<- *[]byte, r io.Reader) {
 	// func ReadAll(r Reader) ([]byte, error) {
@@ -318,49 +189,50 @@ ffmpeg -y -re -fflags nobuffer -f s16le -ac 2 -ar 44100 -i pipe:0 -bits_per_raw_
 
 // }
 
-func WaitOnStdIn(connectionPool *ConnectionPool, content io.ReadCloser) {
-	for {
-		stat, err := os.Stdin.Stat()
-		if err != nil {
-			z.Debug().AnErr("WaitonStdIn", err).Send()
-			return
-		}
-		if (stat.Mode() & os.ModeCharDevice) == 0 {
-			log.Println("STDIN Ready, scanning...")
-			break
-		}
-	}
-	go GetStream(connectionPool, content)
-}
+// func WaitOnStdIn(connectionPool *ConnectionPool, content io.ReadCloser) {
+// 	for {
+// 		stat, err := os.Stdin.Stat()
+// 		if err != nil {
+// 			z.Debug().AnErr("WaitonStdIn", err).Send()
+// 			return
+// 		}
+// 		if (stat.Mode() & os.ModeCharDevice) == 0 {
+// 			log.Println("STDIN Ready, scanning...")
+// 			break
+// 		}
+// 	}
+// 	go GetStream(connectionPool, content)
+// }
 
 func main() {
 
 	// * File
-	// f, err := os.Open("./hlsTest/output.aac")
-	// if err != nil {
-	// 	z.Fatal().AnErr("os.Open", err)
-	// 	panic(err)
-	// }
-	stat, err := os.Stdin.Stat()
-	if (stat.Mode() & os.ModeCharDevice) == 0 {
-		log.Println("STDIN Ready, scanning...")
-		// scanner := bufio.NewScanner(os.Stdin)
-		// scanner.Split(bufio.ScanBytes)
-		// for scanner.Scan() {
-		// 	ctn = append(ctn, scanner.Bytes()...)
-		// }
-		// go ReadFromStdIn(ctn, os.Stdin)
-	} else if err != nil {
-		log.Fatalln(err)
-	} else {
-		log.Fatal("Nothing to read from StdIN")
+	f, err := os.Open("./hlsTest/output.aac")
+	if err != nil {
+		z.Fatal().AnErr("os.Open", err)
+		panic(err)
 	}
+	defer f.Close()
+	// stat, err := os.Stdin.Stat()
+	// if (stat.Mode() & os.ModeCharDevice) == 0 {
+	// 	log.Println("STDIN Ready, scanning...")
+	// 	// scanner := bufio.NewScanner(os.Stdin)
+	// 	// scanner.Split(bufio.ScanBytes)
+	// 	// for scanner.Scan() {
+	// 	// 	ctn = append(ctn, scanner.Bytes()...)
+	// 	// }
+	// 	// go ReadFromStdIn(ctn, os.Stdin)
+	// } else if err != nil {
+	// 	log.Fatalln(err)
+	// } else {
+	// 	log.Fatal("Nothing to read from StdIN")
+	// }
 	// stats, _ := f.Stat()
 	// z.Info().Any("FileStats", stats).Send()
-	connPool := NewConnectionPool()
-	go GetStream(connPool, os.Stdin)
+	connPool := virtual.NewConnectionPool()
+	go virtual.GetStreamFromReader(connPool, f)
 	var fib = fiber.New(fiber.Config{
-		// Prefork:       true,
+		Prefork:       true,
 		CaseSensitive: true,
 		StrictRouting: true,
 		ServerHeader:  "Fiber",
@@ -368,24 +240,22 @@ func main() {
 		// GETOnly:       true,
 	})
 
-	fib.Get("/", func(c *fiber.Ctx) error {
+	fib.Get("/stream", func(c *fiber.Ctx) error {
 		// z.Info().Any("CtxId", c.Context().ID()).Send()
 		// z.Info().Any("headers", c.Context().Request.String()).Send()
 		c.Context().SetContentType("audio/aac")
 		c.Set(fiber.HeaderConnection, fiber.HeaderKeepAlive)
-		// var connection = connPool.HasConnectionWithId(c.Context().RemoteIP())
+		var connection = connPool.HasConnectionWithId(c.Context().RemoteIP())
 		// connection, ok := c.Context().Value("connection").(*virtual.Connection)
-		connection := NewConnection()
-		// if connection == nil {
-		// 	z.Warn().Msg("Assembling a new connection!")
-		// 	connection = NewConnectionWithId(c.Context().RemoteIP())
-		// 	connPool.AddConnection(connection)
-		// } else {
-		// 	z.Warn().Msg("Found a existing connection")
-		// }
+		if connection == nil {
+			// z.Warn().Msg("Assembling a new connection!")
+			connection = virtual.NewConnectionWithId(c.Context().RemoteIP())
+			connPool.AddConnection(connection)
+		} else {
+			z.Warn().Msg("Found a existing connection")
+		}
 		z.Info().Msgf("%s has connected to the audio stream\n", c.Context().RemoteIP().String())
 		c.Context().SetBodyStreamWriter(func(w *bufio.Writer) {
-			// go func() {
 			for {
 				buf := <-connection.BufferCh()
 				if _, err := w.Write(buf); err != nil {
@@ -395,15 +265,14 @@ func main() {
 				}
 				if err := w.Flush(); err != nil {
 					z.Warn().Err(err).Msg("calling writer.Flush")
+					return
 				}
 				connection.ClearBuffer()
 			}
-			// }()
 		})
 		return nil
 	})
-	if err := fib.Listen(":8080"); err != nil {
-		z.Fatal().Err(err)
-	}
+
+	z.Fatal().Err(fib.Listen(":5040"))
 
 }

@@ -21,13 +21,13 @@ var fib = fiber.New(fiber.Config{
 	// GETOnly:       true,
 })
 
-func Test_SendStream(t *testing.T) {
+func Test_SendStream(t *testing.T) { // * Good function
 	ctn, _ := loadTestFile(t, "output.aac", false)
 	defer ctn.Close()
 	connPool := virtual.NewConnectionPool()
 
 	go virtual.GetStreamFromReader(connPool, ctn)
-	fib.Get("/", func(c *fiber.Ctx) error {
+	fib.Get("/stream", func(c *fiber.Ctx) error {
 		// z.Info().Any("CtxId", c.Context().ID()).Send()
 		// z.Info().Any("headers", c.Context().Request.String()).Send()
 		c.Context().SetContentType("audio/aac")
@@ -59,7 +59,7 @@ func Test_SendStream(t *testing.T) {
 		return nil
 	})
 
-	fib.Listen(":8080")
+	z.Error().Err(fib.Listen(":8080"))
 }
 
 func Test_VirtualDeviceHandlers(t *testing.T) {
