@@ -26,7 +26,7 @@ func Test_SendStream(t *testing.T) {
 	defer ctn.Close()
 	connPool := virtual.NewConnectionPool()
 
-	// go virtual.GetStreamFromReader(connPool, ctn)
+	go virtual.GetStreamFromReader(connPool, ctn)
 	fib.Get("/", func(c *fiber.Ctx) error {
 		// z.Info().Any("CtxId", c.Context().ID()).Send()
 		// z.Info().Any("headers", c.Context().Request.String()).Send()

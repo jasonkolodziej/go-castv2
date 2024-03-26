@@ -168,7 +168,6 @@ func GetStream(connectionPool *ConnectionPool, content []byte) {
 }
 
 func GetStreamFromReader(connectionPool *ConnectionPool, content io.ReadCloser) {
-	defer content.Close()
 	buffer := make([]byte, BUFFERSIZE)
 
 	for {
