@@ -33,6 +33,14 @@ func (v *VirtualDevice) Handlers() []fiber.Handler {
 	}
 }
 
+// func (v *VirtualDevice) AppAssembly() *fiber.App {
+// 	if v.f != nil {
+// 		return v.f
+// 	}
+// 	v.f = fiber.New()
+// 	r := v.f.Get("/:deviceId", v.DefaultHandler())
+// }
+
 func (v *VirtualDevice) Router(api fiber.Router) {
 	r := api.Get("/:deviceId", v.DefaultHandler())
 	r.Get("/connect", v.ConnectDeviceHandler())
@@ -73,13 +81,15 @@ func (v *VirtualDevice) ConnectDeviceHandler() fiber.Handler {
 				z.Error().AnErr("ConnectDeviceHandler", err).Msg("StartTranscoder")
 			}
 			if v.content == nil {
-				z.Debug().AnErr("ConnectDeviceHandler", fmt.Errorf("content deemed of nil Type")).Msg("error: StartTranscoder()")
+				z.Debug().AnErr("ConnectDeviceHandler", fmt.Errorf("content deemed of nil Type, attempting to open")).Msg("error: StartTranscoder()")
+				v.openFileAndStream()
 				//data, _ := json.MarshalIndent(err, "", "  ")
 				return c.SendStatus(500)
 			}
-			if v.connectionPool.Empty() { // * if this is the first time /connect was called
-				v.openFileAndStream()
-			}
+			//if v.connectionPool.Empty() { // * if this is the first time /connect was called
+			z.Info().Msg("OPENING FILE")
+			v.openFileAndStream()
+			//}
 			// v.ConnectDeviceToVirtualStream() // * Inform the google chromecast to play
 			return c.SendString("connecting... /stream should be avail.")
 		}

@@ -130,7 +130,8 @@ func (v *VirtualDevice) StartTranscoder() error {
 	}
 	v.content, err = os.CreateTemp("/tmp", "example.*.aac")
 	v.fileName = v.content.Name()
-	v.content.Close()
+	v.content.Close() // * Close the temp file so ffmpeg doesn't get upset
+	// v.content = nil   // * null it out
 	if err != nil {
 		z.Fatal().AnErr("StartTranscoder", err).Msg("os.CreateTemp")
 	}

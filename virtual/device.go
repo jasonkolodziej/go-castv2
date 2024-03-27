@@ -45,7 +45,7 @@ func NewVirtualDevice(d *castv2.Device, ctx context.Context) *VirtualDevice {
 	if ctx == nil {
 		ctx = context.TODO()
 	}
-	return &VirtualDevice{
+	v = &VirtualDevice{
 		Device:     d,
 		content:    nil,
 		rawContent: nil,
@@ -63,6 +63,7 @@ func NewVirtualDevice(d *castv2.Device, ctx context.Context) *VirtualDevice {
 	}
 	// Check for sps device conf
 	// v.checkForConfigFile()
+	return v
 }
 
 func (v *VirtualDevice) teardown() error {

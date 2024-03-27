@@ -16,7 +16,7 @@ import (
 )
 
 var fib = fiber.New(fiber.Config{
-	// Prefork:       true,
+	//Prefork:       true,
 	CaseSensitive: true,
 	StrictRouting: true,
 	ServerHeader:  "Fiber",
