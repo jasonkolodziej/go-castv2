@@ -127,7 +127,7 @@ func (cp *ConnectionPool) Broadcast(buffer []byte) {
 		select {
 
 		case connection.bufferChannel <- connection.buffer:
-			z.Debug().Any("ConnectionPool.Broadcast", "broadcasted buffer").Send()
+			// z.Debug().Any("ConnectionPool.Broadcast", "broadcasted buffer").Send()
 		default:
 
 		}

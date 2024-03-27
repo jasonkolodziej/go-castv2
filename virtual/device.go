@@ -20,7 +20,8 @@ var z = zerolog.New(os.Stdout).With().Timestamp().Caller().Logger()
 
 type VirtualDevice struct {
 	*castv2.Device
-	content        io.ReadCloser
+	// content        io.ReadCloser
+	content        *os.File
 	rawContent     io.ReadCloser
 	ctx            context.Context
 	Cancel         context.CancelFunc
@@ -28,6 +29,7 @@ type VirtualDevice struct {
 	sps, ffmpeg    *exec.Cmd
 	connectionPool *ConnectionPool
 	contentType    *string
+	fileName       string
 	// f              *fiber.App
 	// mu             sync.Mutex
 }
@@ -65,7 +67,8 @@ func NewVirtualDevice(d *castv2.Device, ctx context.Context) *VirtualDevice {
 
 func (v *VirtualDevice) teardown() error {
 	// defer close(v.content)
-	defer v.content.Close()
+	defer os.Remove(v.content.Name()) // clean up
+	// defer v.content.Close()
 	defer v.ffmpeg.Cancel()
 	defer v.sps.Cancel()
 	_ = v.sps.Wait()

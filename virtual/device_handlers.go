@@ -78,13 +78,24 @@ func (v *VirtualDevice) ConnectDeviceHandler() fiber.Handler {
 				return c.SendStatus(500)
 			}
 			if v.connectionPool.Empty() { // * if this is the first time /connect was called
-				go GetStreamFromReader(v.connectionPool, v.content)
+				v.openFileAndStream()
 			}
 			// v.ConnectDeviceToVirtualStream() // * Inform the google chromecast to play
 			return c.SendString("connecting... /stream should be avail.")
 		}
 		return c.Next()
 	}
+}
+
+func (v *VirtualDevice) openFileAndStream() {
+	var err error
+	v.content, err = os.Open(v.fileName)
+	if err != nil {
+		z.Err(err).Msg("opening temp file")
+	}
+	// defer v.content.Close()
+	z.Debug().Msgf("opened file: %s", v.fileName)
+	go GetStreamFromReader(v.connectionPool, v.content)
 }
 
 func (v *VirtualDevice) DisconnectDeviceHandler() fiber.Handler {

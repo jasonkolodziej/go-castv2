@@ -3,6 +3,7 @@ package virtual
 import (
 	"bufio"
 	"io"
+	"os"
 	"os/exec"
 	"strings"
 
@@ -50,26 +51,29 @@ Example:
 		|||
 		| ffmpeg -y -re -fflags nobuffer -f s16le -ac 2 -ar 44100 -i pipe:0 -c:a adts pipe:1
 */
-var ffmpegArgs = []string{
-	// * arguments
-	"-y",
-	"-re",
-	"-fflags",  // * AVOption flags (default 200)
-	"nobuffer", // * reduce the latency introduced by optional buffering
-	"-f", "s16le",
-	"-ar", "44100",
-	"-ac", "2",
-	// "-re",         // * encode at 1x playback speed, to not burn the CPU
-	"-i", "pipe:", // * input from pipe (stdout->stdin)
-	// "-ar", "44100", // * AV sampling rate
-	// "-c:a", "flac", // * audio codec
-	// "-sample_fmt", "44100", // * sampling rate
-	"-ac", "2", // * audio channels, chromecasts don't support more than two audio channels
-	// "-f", "mp4", // * fmt force format
-	"-bits_per_raw_sample", "8",
-	"-movflags", "frag_keyframe+empty_moov", //? https://github.com/fluent-ffmpeg/node-fluent-ffmpeg/issues/967#issuecomment-888843722
-	"-f", "adts",
-	"pipe:1", // * output to pipe (stdout->) //TODO: this will need to be a file with mov flags
+var ffmpegArgs = func(fileName string) []string {
+	return []string{
+		// * arguments
+		"-y",
+		"-re",
+		"-fflags",  // * AVOption flags (default 200)
+		"nobuffer", // * reduce the latency introduced by optional buffering
+		"-f", "s16le",
+		"-ar", "44100",
+		"-ac", "2",
+		// "-re",         // * encode at 1x playback speed, to not burn the CPU
+		"-i", "pipe:", // * input from pipe (stdout->stdin)
+		// "-ar", "44100", // * AV sampling rate
+		// "-c:a", "flac", // * audio codec
+		// "-sample_fmt", "44100", // * sampling rate
+		"-ac", "2", // * audio channels, chromecasts don't support more than two audio channels
+		// "-f", "mp4", // * fmt force format
+		"-bits_per_raw_sample", "8",
+		"-movflags", "frag_keyframe+empty_moov", //? https://github.com/fluent-ffmpeg/node-fluent-ffmpeg/issues/967#issuecomment-888843722
+		"-f", "adts",
+		fileName,
+		// "pipe:1", // * output to pipe (stdout->) //TODO: this will need to be a file with mov flags
+	}
 }
 
 func (v *VirtualDevice) Virtualize() error {
@@ -124,10 +128,17 @@ func (v *VirtualDevice) StartTranscoder() error {
 		z.Err(err).Msg("error: VirtualDevice.rawContent interface was nil")
 		return err
 	}
+	v.content, err = os.CreateTemp("/tmp", "example.*.aac")
+	v.fileName = v.content.Name()
+	v.content.Close()
+	if err != nil {
+		z.Fatal().AnErr("StartTranscoder", err).Msg("os.CreateTemp")
+	}
+
 	v.ffmpeg = exec.CommandContext(
 		v.ctx,
 		"ffmpeg",
-		ffmpegArgs...,
+		ffmpegArgs(v.fileName)...,
 	)
 	v.ffmpeg.Stdin = v.rawContent
 	errno, err := v.ffmpeg.StderrPipe()
@@ -137,12 +148,12 @@ func (v *VirtualDevice) StartTranscoder() error {
 		return err
 	}
 	go WriteStdErrnoToLog(errno)
-	v.content, err = v.ffmpeg.StdoutPipe()
-	if err != nil {
-		z.Err(err).Msg("error: ffmpeg StdoutPipe()")
-		v.ffmpeg.Cancel()
-		return err
-	}
+	// v.content, err = v.ffmpeg.StdoutPipe()
+	// if err != nil {
+	// 	z.Err(err).Msg("error: ffmpeg StdoutPipe()")
+	// 	v.ffmpeg.Cancel()
+	// 	return err
+	// }
 	// v.content <- out
 
 	return v.ffmpeg.Start()

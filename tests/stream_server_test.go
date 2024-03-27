@@ -103,16 +103,18 @@ func Test_VirtualDeviceHandlers(t *testing.T) {
 		t.Fatal(err)
 	}
 	var K *virtual.VirtualDevice = virtual.NewVirtualDevice(&kitchen, context.Background())
-	if !fiber.IsChild() {
-		fmt.Println("I'm the parent process")
-		if err = K.Virtualize(); err != nil {
-			t.Fatal(err)
-		}
-		devices.Get("/:deviceId/*", K.Handlers()...)
-		// K.VirtualHostAddr(&net.IPAddr{IP: localIp, Zone: ""}, "", "")
-		// K.PlayMedia("http://192.168.2.14:5123/stream", "audio/flac", "BUFFERED")
-		z.Info().Msg("startingserver has started")
+	// if !fiber.IsChild() {
+	// 	fmt.Println("I'm the parent process")
+	if err = K.Virtualize(); err != nil {
+		t.Fatal(err)
 	}
+	// }
+	// K.VirtualHostAddr(&net.IPAddr{IP: localIp, Zone: ""}, "", "")
+	// K.PlayMedia("http://192.168.2.14:5123/stream", "audio/flac", "BUFFERED")
+
+	// }
+	devices.Get("/:deviceId/*", K.Handlers()...)
+	z.Info().Msg("startingserver has started")
 	err = fib.Listen(":5123")
 	if err != nil {
 		t.Fatal(err)
